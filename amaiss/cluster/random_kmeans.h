@@ -1,0 +1,49 @@
+#ifndef RANDOM_KMEANS_H
+#define RANDOM_KMEANS_H
+
+#include <vector>
+
+#include "amaiss/cluster/inverted_list_clusters.h"
+#include "amaiss/index.h"
+#include "amaiss/invlists/inverted_lists.h"
+
+namespace amaiss {
+
+namespace {
+class ClusterRepresentatives {
+public:
+    ClusterRepresentatives(size_t num_clusters, size_t sketch_size,
+                           size_t alignmnt)
+        : num_clusters_(num_clusters), sketch_size_(sketch_size) {
+        // Align to 64-byte boundary for AVX-512
+
+        data = static_cast<float*>(std::aligned_alloc(
+            alignmnt, num_clusters * sketch_size * sizeof(float)));
+    }
+
+    ~ClusterRepresentatives() { std::free(data); }
+
+    // Access element (i,j) where i is cluster index and j is dimension
+    float& operator()(size_t i, size_t j) { return data[i * sketch_size_ + j]; }
+
+    const float* getData() const { return data; }
+
+private:
+    float* data;
+    size_t num_clusters_;
+    size_t sketch_size_;
+};
+}  // namespace
+
+class RandomKMeans {
+public:
+    RandomKMeans();
+
+    static std::vector<std::vector<idx_t>> train(
+        const Index* index, const std::vector<idx_t>& doc_ids,
+        size_t n_clusters);
+};
+
+}  // namespace amaiss
+
+#endif  // RANDOM_KMEANS_H
