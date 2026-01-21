@@ -10,7 +10,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
+# Valid values are "generic", "avx2", "avx512", "avx512_spr", "sve".
+option(AMAISS_OPT_LEVEL "" "generic")
 option(AMAISS_ENABLE_PYTHON "Build Python bindings" OFF)
 
 add_subdirectory(amaiss)

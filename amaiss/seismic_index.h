@@ -39,7 +39,6 @@ private:
                 std::vector<term_t>& indices, std::vector<float>& values, int k,
                 int cut, float heap_factor) -> std::vector<std::vector<idx_t>>;
 
-private:
     auto single_query(const std::vector<float>& dense,
                       const std::vector<term_t>& cuts, int k, float heap_factor)
         -> std::vector<idx_t>;

@@ -1,6 +1,7 @@
 #include "amaiss/cluster/kmeans_utils.h"
 
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -15,11 +16,9 @@
 #endif
 
 namespace amaiss {
-
-namespace {
 #if defined(__AVX512F__)
 
-std::unique_ptr<DenseVectorMatrix> initialize_cluster_representatives(
+static std::unique_ptr<DenseVectorMatrix> initialize_cluster_representatives(
     const std::vector<std::vector<float>>& dense_centroids,
     size_t center_dimension) {
     size_t cluster_count = dense_centroids.size();
@@ -43,7 +42,7 @@ std::unique_ptr<DenseVectorMatrix> initialize_cluster_representatives(
     return representatives;
 }
 
-std::vector<std::vector<float>> centroids_to_dense(
+static std::vector<std::vector<float>> centroids_to_dense(
     const std::vector<std::vector<idx_t>>& clusters,
     const SparseVectors* vectors) {
     std::vector<std::vector<float>> dense_centroids;
@@ -55,7 +54,7 @@ std::vector<std::vector<float>> centroids_to_dense(
     return dense_centroids;
 }
 
-size_t get_dense_vector_max_dimension(
+static size_t get_dense_vector_max_dimension(
     const std::vector<std::vector<float>>& dense) {
     size_t max_dimension = 0;
     for (const auto& centroid : dense) {
@@ -64,9 +63,9 @@ size_t get_dense_vector_max_dimension(
     return max_dimension;
 }
 
-void map_docs_to_clusters_avx512(const SparseVectors* vectors,
-                                 const std::vector<idx_t>& docs,
-                                 std::vector<std::vector<idx_t>>& clusters) {
+static void map_docs_to_clusters_avx512(
+    const SparseVectors* vectors, const std::vector<idx_t>& docs,
+    std::vector<std::vector<idx_t>>& clusters) {
     if (vectors == nullptr) {
         throw std::runtime_error("vectors is nullptr");
     }
@@ -84,7 +83,7 @@ void map_docs_to_clusters_avx512(const SparseVectors* vectors,
     dense_centroids = std::vector<std::vector<float>>();
     for (size_t i = 0; i < n_docs; ++i) {
         idx_t doc_id = docs[i];
-        const auto& [indices, weights] = vectors->get_vector(doc_id);
+        const auto& [indices, weights] = vectors->get_vector_view(doc_id);
         std::vector<float> similarities = dot_product_sparse_matrix(
             indices, weights, *cluster_representatives);
 
@@ -94,7 +93,6 @@ void map_docs_to_clusters_avx512(const SparseVectors* vectors,
 }
 
 #endif
-}  // namespace
 
 void map_docs_to_clusters(const SparseVectors* vectors,
                           const std::vector<idx_t>& docs,

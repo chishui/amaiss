@@ -5,6 +5,7 @@
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
+#include "amaiss/utils/dense_vector_matrix.h"
 
 namespace amaiss {
 

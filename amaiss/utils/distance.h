@@ -21,39 +21,8 @@ inline float dot_product_float_dense(std::span<const term_t> indices1,
                                      const std::vector<float>& dense) {
     float result = 0.0F;
     size_t size = indices1.size();
-    size_t dense_size = dense.size();
-
     for (size_t i = 0; i < size; ++i) {
         result += weights1[i] * dense[indices1[i]];
-    }
-
-    return result;
-}
-
-inline float dot_product_float(std::span<const term_t> indices1,
-                               std::span<const float> weights1,
-                               std::span<const term_t> indices2,
-                               std::span<const float> weights2) {
-    float result = 0.0F;
-    size_t size1 = indices1.size();
-    size_t size2 = indices2.size();
-    // Merge-based algorithm: iterate through both sorted index arrays
-
-    for (size_t i = 0, j = 0; i < size1 && j < size2;) {
-        idx_t idx_1 = indices1[i];
-        idx_t idx_2 = indices2[j];
-
-        if (idx_1 == idx_2) {
-            // Matching indices: multiply weights and add to result
-            result += weights1[i] * weights2[j];
-            ++i;
-            ++j;
-        } else if (idx_1 < idx_2) {
-            // Advance the smaller index
-            ++i;
-        } else {
-            ++j;
-        }
     }
 
     return result;

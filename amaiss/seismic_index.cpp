@@ -16,16 +16,34 @@
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
+#if defined(__AVX512F__)
+#include "amaiss/utils/distance_avx512.h"
+#else
 #include "amaiss/utils/distance.h"
+#endif
 #include "amaiss/utils/ranker.h"
 #include "amaiss/utils/vector_process.h"
 
 namespace amaiss {
+
+constexpr size_t kCacheLineSize = 64;  // bytes
+
 static inline void prefetch_next_vector(const SparseVectors* vectors,
                                         idx_t doc_id) {
     const auto& view = vectors->get_vector_view(doc_id);
-    __builtin_prefetch(view.indices.data(), 0, 0);
-    __builtin_prefetch(view.values.data(), 0, 0);
+    const size_t indices_bytes = view.indices.size() * sizeof(view.indices[0]);
+    const size_t values_bytes = view.values.size() * sizeof(view.values[0]);
+
+    const char* indices_ptr =
+        reinterpret_cast<const char*>(view.indices.data());
+    const char* values_ptr = reinterpret_cast<const char*>(view.values.data());
+
+    for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
+        __builtin_prefetch(indices_ptr + offset, 0, 0);
+    }
+    for (size_t offset = 0; offset < values_bytes; offset += kCacheLineSize) {
+        __builtin_prefetch(values_ptr + offset, 0, 0);
+    }
 }
 
 static void query_single_inverted_list(
@@ -49,8 +67,8 @@ static void query_single_inverted_list(
     }
     // sort first list to handle higher impact cluster first to avoid bias
     if (first_list) {
-        std::sort(
-            cluster_score_pairs.begin(), cluster_score_pairs.end(),
+        std::ranges::sort(
+            cluster_score_pairs,
             [](const auto& a, const auto& b) { return a.second > b.second; });
     }
     for (const auto& [cluster_id, cluster_score] : cluster_score_pairs) {
@@ -183,7 +201,9 @@ auto SeismicIndex::search(idx_t n, std::vector<idx_t>& indptr,
         auto dense = query_vectors.get_dense_vector_float(query_idx);
         auto cuts = top_k_tokens(query_vectors.get_vector_view(query_idx), cut);
         auto start = std::chrono::high_resolution_clock::now();
-        results[query_idx] = single_query(dense, cuts, k, heap_factor);
+        results[query_idx] =
+            single_query(query_vectors.get_vector_view(query_idx), dense, cuts,
+                         k, heap_factor);
         auto end = std::chrono::high_resolution_clock::now();
         total_single_query_time_ms +=
             std::chrono::duration<double, std::milli>(end - start).count();

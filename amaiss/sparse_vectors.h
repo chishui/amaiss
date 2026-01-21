@@ -35,6 +35,7 @@ class SparseVectors {
 
 public:
     explicit SparseVectors(SparseVectorsConfig config);
+    ~SparseVectors() = default;
 
     // copy constructor
     SparseVectors(const SparseVectors& other) = default;

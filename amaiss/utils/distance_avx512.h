@@ -11,25 +11,41 @@
 
 namespace amaiss {
 
+// Scalar fallback for argmax
+inline size_t argmax_scalar(const std::vector<float>& values) {
+    if (values.empty()) {
+        return 0;
+    }
+    size_t max_idx = 0;
+    float max_val = values[0];
+    for (size_t i = 1; i < values.size(); ++i) {
+        if (values[i] > max_val) {
+            max_val = values[i];
+            max_idx = i;
+        }
+    }
+    return max_idx;
+}
+
 // matrix is a dimension * num_clusters matrix
-std::vector<float> dot_product_sparse_matrix(std::span<const term_t> indices,
-                                             std::span<const float> weights,
-                                             const DenseVectorMatrix& matrix) {
+inline std::vector<float> dot_product_sparse_matrix(
+    std::span<const term_t> indices, std::span<const float> weights,
+    const DenseVectorMatrix& matrix) {
     size_t rows =
         matrix.get_rows();  // this is actually dimension of dense vector
     size_t dimension = matrix.get_dimension();  // this is number of vectors
     size_t num_clusters = dimension;
 
     std::vector<float> similarities(num_clusters, 0.0F);
-    size_t sparse_vector_size = indices.size();
-    for (size_t i = 0; i < sparse_vector_size; ++i) {
+    size_t token_size = indices.size();
+    for (size_t i = 0; i < token_size; ++i) {
         size_t dim = indices[i];
-        if (dim >= dimension) {
+        if (dim >= rows) {
             continue;
         }
         float doc_value = weights[i];
 
-        const float* centroid_values = matrix.data() + dim * rows;
+        const float* centroid_values = matrix.data() + dim * num_clusters;
 
         size_t centroid_idx = 0;
 
@@ -141,6 +157,66 @@ inline size_t argmax_simd(const std::vector<float>& values) {
     }
 
     return final_idx;
+}
+
+// AVX512 version of dot_product_float_dense
+// Computes dot product between sparse vector (indices + weights) and dense
+// vector
+inline float dot_product_float_dense(std::span<const term_t> indices,
+                                     std::span<const float> weights,
+                                     const std::vector<float>& dense) {
+    size_t size = indices.size();
+    __m512 sum = _mm512_setzero_ps();
+    size_t i = 0;
+
+    // Process 16 floats at a time using AVX512
+    for (; i + 16 <= size; i += 16) {
+        // Load 16 uint16_t indices (256 bits) and zero-extend to 32-bit
+        __m256i idx16 =
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&indices[i]));
+        __m512i idx = _mm512_cvtepu16_epi32(idx16);
+
+        // Gather 16 values from dense vector using indices
+        __m512 dense_vals =
+            _mm512_i32gather_ps(idx, dense.data(), sizeof(float));
+
+        // Load 16 weights
+        __m512 weight_vals = _mm512_loadu_ps(&weights[i]);
+
+        // Fused multiply-add: sum += weights * dense_vals
+        sum = _mm512_fmadd_ps(weight_vals, dense_vals, sum);
+    }
+
+    // Horizontal sum of the 16 floats in sum register
+    float result = _mm512_reduce_add_ps(sum);
+
+    // Handle remaining elements with scalar code
+    for (; i < size; ++i) {
+        result += weights[i] * dense[indices[i]];
+    }
+
+    return result;
+}
+
+inline auto dot_product_float_dense(const SparseVectors* vectors,
+                                    const std::vector<float>& dense)
+    -> std::vector<float> {
+    size_t n_vectors = vectors->num_vectors();
+    std::vector<float> results(n_vectors, 0.0F);
+    for (size_t i = 0; i < n_vectors; ++i) {
+        const auto& [indices, weights] = vectors->get_vector_view(i);
+        for (int j = 0; j < indices.size(); ++j) {
+            auto index = indices[j];
+            if (index >= dense.size()) {
+                break;
+            }
+            if (dense[index] == 0) {
+                continue;
+            }
+            results[i] += weights[j] * dense[index];
+        }
+    }
+    return results;
 }
 
 }  // namespace amaiss
