@@ -1,6 +1,8 @@
 #ifndef RANKER_H
 #define RANKER_H
 
+#include <algorithm>
+#include <cstring>
 #include <functional>
 #include <queue>
 #include <unordered_set>
@@ -21,6 +23,7 @@ class TopKHolder {
     };
 
     std::priority_queue<P, std::vector<P>, CompareP> pq;
+    float threshold_ = std::numeric_limits<float>::infinity();
 
 public:
     TopKHolder(int k) : k(k) {
@@ -31,39 +34,58 @@ public:
     }
 
     // use a priority_queue to hold the top K items with highest scores
-    void Add(const float score, const T& item) {
+    void add(const float score, const T& item) {
+        if (pq.size() >= k && score <= threshold_) {
+            return;  // Fast reject without touching heap
+        }
         if (pq.size() < k) {
-            pq.push(std::make_pair(score, item));
-        } else if (pq.top().first < score) {
+            pq.emplace(score, item);
+            if (pq.size() == k) threshold_ = pq.top().first;
+        } else {
             pq.pop();
-            pq.push(std::make_pair(score, item));
+            pq.emplace(score, item);
+            threshold_ = pq.top().first;
         }
     }
-
-    void Add_simple(const float score, const T& item) {
-        pq.push(std::make_pair(score, item));
-    }
-
-    void Pop_simple() { pq.pop(); }
-
     /**
-     *  get data from pq, this is a disruptive operation
+     * get k data from pq in value ascending order, this is a disruptive
+     * operation
      */
-    std::vector<T> TopK() {
-        std::vector<T> ret;
-        ret.reserve(pq.size());
-        while (!pq.empty()) {
-            ret.push_back(pq.top().second);
+    std::vector<T> top_k() {
+        if (k <= 0) return {};
+        std::vector<T> ret(k);
+        int idx = 0;
+        while (!pq.empty() && idx < k) {
+            ret[idx] = pq.top().second;
             pq.pop();
+            ++idx;
         }
         return ret;
     }
 
-    bool empty() { return pq.empty(); }
+    /**
+     *  get data from pq in value descending order (highest scores first),
+     *  this is a disruptive operation. Always returns exactly k elements,
+     *  padding with default-constructed T if pq has fewer than k items.
+     */
+    std::vector<T> top_k_descending() {
+        if (k <= 0) return {};
+        std::vector<T> ret(k);
+        int idx = 0;
+        while (!pq.empty() && idx < k) {
+            ret[idx] = pq.top().second;
+            pq.pop();
+            ++idx;
+        }
+        return ret;
+    }
+
+    [[nodiscard]] bool full() { return pq.size() == k; }
+    [[nodiscard]] bool empty() { return pq.empty(); }
 
     size_t size() { return pq.size(); }
 
-    float PeekScore() { return pq.top().first; }
+    float peek_score() { return pq.top().first; }
 };
 
 template <typename T, typename ID_T = size_t,
@@ -93,7 +115,7 @@ public:
     }
 
     // use a priority_queue to hold the top K items with highest scores
-    void Add(const float score, ID_T id, const T& item) {
+    void add(const float score, ID_T id, const T& item) {
         if (pq.size() >= k && score <= pq.top().first) {
             return;
         }
@@ -112,7 +134,7 @@ public:
         }
     }
 
-    void Add(const float score, ID_T id) {
+    void add(const float score, ID_T id) {
         if (pq.size() >= k && score <= pq.top().first) {
             return;
         }
@@ -131,12 +153,12 @@ public:
         }
     }
 
-    bool IsFull() { return pq.size() == k; }
+    [[nodiscard]] bool full() { return pq.size() == k; }
 
     /**
      *  get data from pq, this is a disruptive operation
      */
-    std::vector<T> TopK() {
+    std::vector<T> top_k() {
         std::vector<T> ret;
         ret.reserve(pq.size());
         while (!pq.empty()) {
@@ -146,11 +168,27 @@ public:
         return ret;
     }
 
+    /**
+     *  get data from pq in descending order (highest scores first),
+     *  this is a disruptive operation. Always returns exactly k elements,
+     *  padding with default-constructed T if pq has fewer than k items.
+     */
+    std::vector<T> top_k_descending() {
+        if (k <= 0) return {};
+        std::vector<T> ret(k);
+        size_t idx = pq.size();
+        while (!pq.empty()) {
+            ret[--idx] = pq.top().second.second;
+            pq.pop();
+        }
+        return ret;
+    }
+
     bool empty() { return pq.empty(); }
 
     size_t size() { return pq.size(); }
 
-    float PeekScore() { return pq.top().first; }
+    float peek_score() { return pq.top().first; }
 };
 
 }  // namespace amaiss

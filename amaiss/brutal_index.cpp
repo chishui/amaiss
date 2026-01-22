@@ -60,9 +60,9 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
     for (size_t i = 0; i < num_docs; ++i) {
         const auto& [indices, weights] = vectors_->get_vector_view(i);
         float score = dot_product_float_dense(indices, weights, dense);
-        holder.Add(score, i);
+        holder.add(score, i);
     }
-    auto results = holder.TopK();
+    auto results = holder.top_k();
     std::reverse(results.begin(), results.end());
     results.resize(k);
     return results;

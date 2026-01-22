@@ -8,6 +8,7 @@
 
 #include "amaiss/types.h"
 #include "amaiss/utils/dense_vector_matrix.h"
+#include "amaiss/utils/prefetch.h"
 
 namespace amaiss {
 
@@ -205,16 +206,10 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
     std::vector<float> results(n_vectors, 0.0F);
     for (size_t i = 0; i < n_vectors; ++i) {
         const auto& [indices, weights] = vectors->get_vector_view(i);
-        for (int j = 0; j < indices.size(); ++j) {
-            auto index = indices[j];
-            if (index >= dense.size()) {
-                break;
-            }
-            if (dense[index] == 0) {
-                continue;
-            }
-            results[i] += weights[j] * dense[index];
+        if (i + 1 < n_vectors) {
+            prefetch_next_vector(vectors, i + 1);
         }
+        results[i] = dot_product_float_dense(indices, weights, dense);
     }
     return results;
 }

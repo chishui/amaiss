@@ -21,34 +21,15 @@
 #else
 #include "amaiss/utils/distance.h"
 #endif
+#include "amaiss/utils/prefetch.h"
 #include "amaiss/utils/ranker.h"
 #include "amaiss/utils/vector_process.h"
 
 namespace amaiss {
 
-constexpr size_t kCacheLineSize = 64;  // bytes
-
-static inline void prefetch_next_vector(const SparseVectors* vectors,
-                                        idx_t doc_id) {
-    const auto& view = vectors->get_vector_view(doc_id);
-    const size_t indices_bytes = view.indices.size() * sizeof(view.indices[0]);
-    const size_t values_bytes = view.values.size() * sizeof(view.values[0]);
-
-    const char* indices_ptr =
-        reinterpret_cast<const char*>(view.indices.data());
-    const char* values_ptr = reinterpret_cast<const char*>(view.values.data());
-
-    for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
-        __builtin_prefetch(indices_ptr + offset, 0, 0);
-    }
-    for (size_t offset = 0; offset < values_bytes; offset += kCacheLineSize) {
-        __builtin_prefetch(values_ptr + offset, 0, 0);
-    }
-}
-
 static void query_single_inverted_list(
     const SparseVectors* vectors, const InvertedListClusters& cluster_invlist,
-    const std::vector<float>& dense, DedupeTopKHolder<idx_t>& heap,
+    const std::vector<float>& dense, TopKHolder<idx_t>& heap,
     std::unordered_set<idx_t>& visited, float heap_factor, bool first_list) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
@@ -72,8 +53,7 @@ static void query_single_inverted_list(
             [](const auto& a, const auto& b) { return a.second > b.second; });
     }
     for (const auto& [cluster_id, cluster_score] : cluster_score_pairs) {
-        if (heap.IsFull() &&
-            (cluster_score < (heap.PeekScore() / heap_factor))) {
+        if (heap.full() && (cluster_score * heap_factor < heap.peek_score())) {
             if (first_list) {
                 break;
             }
@@ -90,12 +70,9 @@ static void query_single_inverted_list(
             if (!inserted) {
                 continue;
             }
-            if (doc_id >= num_vectors) {
-                continue;
-            }
             const auto& [indices, weights] = vectors->get_vector_view(doc_id);
             auto score = dot_product_float_dense(indices, weights, dense);
-            heap.Add(score, doc_id);
+            heap.add(score, doc_id);
         }
     }
 }
@@ -195,23 +172,14 @@ auto SeismicIndex::search(idx_t n, std::vector<idx_t>& indptr,
     double total_single_query_time_ms = 0.0;
 
     // For each query vector
-#pragma omp parallel for num_threads(8) \
-    reduction(+ : total_single_query_time_ms)
+#pragma omp parallel for num_threads(8)
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
-        auto dense = query_vectors.get_dense_vector_float(query_idx);
-        auto cuts = top_k_tokens(query_vectors.get_vector_view(query_idx), cut);
-        auto start = std::chrono::high_resolution_clock::now();
+        const auto& dense = query_vectors.get_dense_vector_float(query_idx);
+        const auto& cuts =
+            top_k_tokens(query_vectors.get_vector_view(query_idx), cut);
         results[query_idx] =
-            single_query(query_vectors.get_vector_view(query_idx), dense, cuts,
-                         k, heap_factor);
-        auto end = std::chrono::high_resolution_clock::now();
-        total_single_query_time_ms +=
-            std::chrono::duration<double, std::milli>(end - start).count();
+            std::move(single_query(dense, cuts, k, heap_factor));
     }
-
-    std::cout << "Total single_query time: " << total_single_query_time_ms
-              << " ms, avg: " << (total_single_query_time_ms / n) << " ms"
-              << std::endl;
 
     return results;
 }
@@ -234,10 +202,10 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
     }
     std::unordered_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
-    DedupeTopKHolder<idx_t> holder(k);
+    TopKHolder<idx_t> holder(k);
     bool first_list = true;
     for (const auto& term : cuts) {
-        if (term >= clustered_inverted_lists.size()) {
+        if (term >= clustered_inverted_lists.size()) [[unlikely]] {
             continue;
         }
         const auto& cluster_invlist = clustered_inverted_lists[term];
@@ -246,11 +214,7 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
         first_list = false;
     }
 
-    auto results = holder.TopK();
-    std::ranges::reverse(results);
-    // in case results size is smaller than k, we fill the rest of data with 0
-    results.resize(k, 0);
-    return results;
+    return holder.top_k_descending();
 }
 
 const SparseVectors* SeismicIndex::get_vectors() const {

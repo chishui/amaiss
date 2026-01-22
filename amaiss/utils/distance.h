@@ -6,6 +6,7 @@
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
+#include "amaiss/utils/prefetch.h"
 
 namespace amaiss {
 /**
@@ -37,9 +38,6 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
         const auto& [indices, weights] = vectors->get_vector_view(i);
         for (int j = 0; j < indices.size(); ++j) {
             auto index = indices[j];
-            if (index >= dense.size()) {
-                break;
-            }
             if (dense[index] == 0) {
                 continue;
             }

@@ -12,9 +12,9 @@ inline std::vector<term_t> top_k_tokens(SparseVectorView vec_view, int k) {
     TopKHolder<term_t> holder(k);
     const auto& [indices, weights] = vec_view;
     for (int i = 0; i < indices.size(); ++i) {
-        holder.Add(weights[i], indices[i]);
+        holder.add(weights[i], indices[i]);
     }
-    auto top_k = holder.TopK();
+    auto top_k = holder.top_k();
     std::ranges::reverse(top_k);
     return top_k;
 }
