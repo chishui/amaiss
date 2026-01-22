@@ -34,8 +34,7 @@ public:
         data_[row * dimension_ + col] = value;
     }
 
-    const float* data() const { return data_; }
-
+    float* data() const { return data_; }
     const size_t get_rows() const { return rows_; }
     const size_t get_dimension() const { return dimension_; }
 

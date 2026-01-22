@@ -25,6 +25,7 @@ public:
 
     std::vector<idx_t> prune_and_keep_doc_ids(size_t lambda);
     void clear();
+
 private:
     size_t element_size_;
     std::vector<idx_t> doc_ids_;
@@ -51,7 +52,7 @@ private:
 class ArrayInvertedLists : public InvertedLists {
 public:
     ArrayInvertedLists(size_t n_term, size_t element_size);
-    ~ArrayInvertedLists();
+    ~ArrayInvertedLists() = default;
     void add_entries(term_t term_id, size_t n_entry, idx_t* doc_ids,
                      const uint8_t* code) override;
 

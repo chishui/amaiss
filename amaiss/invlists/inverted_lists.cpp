@@ -52,23 +52,18 @@ void InvertedList::clear() {
 }
 
 std::vector<idx_t> InvertedList::prune_and_keep_doc_ids(size_t lambda) {
-    if (lambda <= 0 || doc_ids_.size() == 0) {
-        return doc_ids_;
-    }
-
     LockGuard guard(lock_);
 
-    size_t n = doc_ids_.size();
-    if (lambda >= n) {
-        // No pruning needed
+    size_t n_docs = doc_ids_.size();
+    if (lambda <= 0 || n_docs == 0 || lambda >= n_docs) {
         return doc_ids_;
     }
 
     // Create pairs of (float_value, index) for sorting
     std::vector<std::pair<float, idx_t>> value_doc_pairs;
-    value_doc_pairs.reserve(n);
+    value_doc_pairs.reserve(n_docs);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n_docs; ++i) {
         value_doc_pairs.emplace_back(((float*)codes_.data())[i], doc_ids_[i]);
     }
 
@@ -99,8 +94,6 @@ ArrayInvertedLists::ArrayInvertedLists(size_t n_term, size_t element_size)
         lists_.emplace_back(element_size);
     }
 }
-
-ArrayInvertedLists::~ArrayInvertedLists() = default;
 
 void ArrayInvertedLists::add_entries(term_t term_id, size_t n_entry,
                                      idx_t* doc_ids, const uint8_t* code) {

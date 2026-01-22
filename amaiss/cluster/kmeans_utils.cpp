@@ -28,14 +28,12 @@ static std::unique_ptr<DenseVectorMatrix> initialize_cluster_representatives(
     );
 
     // Fill the representatives matrix
+    float* data = representatives->data();
     for (size_t dim = 0; dim < center_dimension; ++dim) {
         for (size_t cluster_idx = 0; cluster_idx < cluster_count;
              ++cluster_idx) {
-            // Check if this dimension exists in the current centroid
-            representatives->set(dim, cluster_idx,
-                                 dim < dense_centroids[cluster_idx].size()
-                                     ? dense_centroids[cluster_idx][dim]
-                                     : 0.0F);
+            data[dim * cluster_count + cluster_idx] =
+                dense_centroids[cluster_idx][dim];
         }
     }
 
@@ -84,8 +82,8 @@ static void map_docs_to_clusters_avx512(
     for (size_t i = 0; i < n_docs; ++i) {
         idx_t doc_id = docs[i];
         const auto& [indices, weights] = vectors->get_vector_view(doc_id);
-        std::vector<float> similarities = dot_product_sparse_matrix(
-            indices, weights, *cluster_representatives);
+        auto similarities = dot_product_sparse_matrix(indices, weights,
+                                                      *cluster_representatives);
 
         size_t best_cluster = argmax_simd(similarities);
         clusters[best_cluster].push_back(doc_id);
