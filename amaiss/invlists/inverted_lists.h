@@ -4,7 +4,6 @@
 #include <atomic>
 #include <vector>
 
-#include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
 namespace amaiss {
@@ -24,7 +23,10 @@ public:
     const std::vector<uint8_t>& get_codes() const { return codes_; };
 
     std::vector<idx_t> prune_and_keep_doc_ids(size_t lambda);
+    void rebuild_from_entries(const std::vector<idx_t>& doc_ids,
+                              const std::vector<float>& scores);
     void clear();
+    size_t size() const { return doc_ids_.size(); };
 
 private:
     size_t element_size_;
@@ -69,8 +71,15 @@ public:
     const InvertedList& operator[](size_t i) const { return lists_[i]; };
     InvertedList& operator[](size_t i) { return lists_[i]; };
 
+    /// Global threshold pruning: selects a global score threshold such that
+    /// on average `n_postings_per_list` entries survive per posting list.
+    /// Entries with scores equal to the threshold are included up to 10% of
+    /// expected total postings.
+    void global_threshold_prune(size_t n_postings_per_list);
+
 private:
     std::vector<InvertedList> lists_;
+    size_t actual_posting_list_size_;
 };
 
 }  // namespace amaiss

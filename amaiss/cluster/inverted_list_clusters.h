@@ -5,7 +5,6 @@
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
-#include "amaiss/utils/dense_vector_matrix.h"
 
 namespace amaiss {
 
@@ -22,19 +21,21 @@ public:
         default;
     virtual ~InvertedListClusters() = default;
 
-    auto get_docs(idx_t idx) const -> std::span<const idx_t>;
-
-    auto get_summary(idx_t i) const -> const SparseVectorView {
-        if (summaries_ == nullptr) return {};
-        return summaries_->get_vector_view(i);
-    }
-    auto summaries() const -> const SparseVectors& { return *summaries_; }
-
-    void summarize(const SparseVectors* vectors, float alpha);
-
     size_t cluster_size() const {
         return summaries_ == nullptr ? 0 : summaries_->num_vectors();
     }
+
+#ifndef SWIG
+    const SparseVectors& summaries() const { return *summaries_; }
+    std::span<const idx_t> get_docs(idx_t idx) const;
+
+    const SparseVectorView get_summary(idx_t i) const {
+        if (summaries_ == nullptr) return {};
+        return summaries_->get_vector_view(i);
+    }
+#endif
+
+    void summarize(const SparseVectors* vectors, float alpha);
 
 private:
     std::vector<idx_t> docs_;

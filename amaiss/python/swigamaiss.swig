@@ -7,11 +7,14 @@
 #include "amaiss/types.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/invlists/inverted_lists.h"
+#include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/index.h"
 #include "amaiss/brutal_index.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/cluster/random_kmeans.h"
 %}
+
+%include "std_vector.i"
 
 %init %{
 import_array();
@@ -22,6 +25,9 @@ import_array();
 %include "amaiss/types.h"
 %include "amaiss/sparse_vectors.h"
 %include "amaiss/invlists/inverted_lists.h"
+%include "amaiss/cluster/inverted_list_clusters.h"
+
+%template(InvertedListClustersVector) std::vector<amaiss::InvertedListClusters>;
 
 // Ignore the protected std::vector-based methods
 %ignore amaiss::Index::add(idx_t, std::vector<idx_t>&, std::vector<term_t>&, std::vector<float>&);

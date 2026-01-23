@@ -77,6 +77,16 @@ static void query_single_inverted_list(
     }
 }
 
+static int calculate_cluster_count(size_t posting_length, int lambda,
+                                   int beta) {
+    int cluster_count = static_cast<int>((posting_length * beta) / lambda);
+    // Ensure at least 1 cluster if there are any postings
+    cluster_count = std::max(1, cluster_count);
+    // Cap the cluster count to not exceed the number of documents
+    cluster_count = std::min(cluster_count, static_cast<int>(posting_length));
+    return cluster_count;
+}
+
 SeismicIndex::SeismicIndex(int dim)
     : Index(dim), lambda_(0), beta_(0), alpha_(0.4F) {}
 SeismicIndex::SeismicIndex(int lambda, int beta, float alpha, int dim)
@@ -112,10 +122,14 @@ void SeismicIndex::build() {
     // TODO: generate lambda and beta
     clustered_inverted_lists.clear();
     clustered_inverted_lists.resize(inverted_lists.size());
+
+    inverted_lists.global_threshold_prune(lambda_);
+
 #pragma omp parallel for schedule(dynamic, 64)
     for (size_t idx = 0; idx < inverted_lists.size(); ++idx) {
         auto& invlist = inverted_lists[idx];
-        const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
+        const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_ * 1.5);
+        int cluster_count = calculate_cluster_count(doc_ids.size(), lambda_, beta_);
         InvertedListClusters inverted_list_clusters(
             RandomKMeans::train(this, doc_ids, beta_));
         inverted_list_clusters.summarize(vectors_.get(), alpha_);
