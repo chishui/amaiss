@@ -204,7 +204,7 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0.0F);
 
-    const auto& [idx_t, indices, values] = vectors->indptr_data();
+    const auto& [indptr, indices, values] = vectors->get_all_data();
 
     for (size_t i = 0; i < n_vectors; ++i) {
         const idx_t start = indptr[i];

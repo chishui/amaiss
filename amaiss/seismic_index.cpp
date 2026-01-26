@@ -77,7 +77,6 @@ static void query_single_inverted_list(
             if (!inserted) {
                 continue;
             }
-            // Direct pointer arithmetic - no function call, no bounds check
             const idx_t start = indptr[doc_id];
             const size_t len = indptr[doc_id + 1] - start;
             auto score = dot_product_float_dense(indices + start,
@@ -191,7 +190,9 @@ auto SeismicIndex::search(idx_t n, std::vector<idx_t>& indptr,
     const auto* query_indices = query_vectors.indices_data();
     const auto* query_values = query_vectors.values_data();
 
-#pragma omp parallel for num_threads(8)
+    int num_threads = 8;
+    int chunk_size = std::max(1, static_cast<int>(n) / (num_threads * 4));
+#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
         const auto& dense = query_vectors.get_dense_vector_float(query_idx);
         const idx_t start = query_indptr[query_idx];
