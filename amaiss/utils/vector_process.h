@@ -8,10 +8,10 @@
 #include "amaiss/utils/ranker.h"
 
 namespace amaiss {
-inline std::vector<term_t> top_k_tokens(SparseVectorView vec_view, int k) {
+inline std::vector<term_t> top_k_tokens(const term_t* indices,
+                                        const float* weights, int size, int k) {
     TopKHolder<term_t> holder(k);
-    const auto& [indices, weights] = vec_view;
-    for (int i = 0; i < indices.size(); ++i) {
+    for (int i = 0; i < size; ++i) {
         holder.add(weights[i], indices[i]);
     }
     auto top_k = holder.top_k();

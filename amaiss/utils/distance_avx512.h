@@ -3,9 +3,10 @@
 
 #include <immintrin.h>
 
-#include <span>
+#include <cstddef>
 #include <vector>
 
+#include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/dense_vector_matrix.h"
 #include "amaiss/utils/prefetch.h"
@@ -28,9 +29,9 @@ inline size_t argmax_scalar(const std::vector<float>& values) {
     return max_idx;
 }
 
-// matrix is a dimension * num_clusters matrix
+// matrix is a dimension * num_clusters matrix (raw pointer version)
 inline std::vector<float> dot_product_sparse_matrix(
-    std::span<const term_t> indices, std::span<const float> weights,
+    const term_t* indices, const float* weights, size_t len,
     const DenseVectorMatrix& matrix) {
     size_t rows =
         matrix.get_rows();  // this is actually dimension of dense vector
@@ -38,8 +39,7 @@ inline std::vector<float> dot_product_sparse_matrix(
     size_t num_clusters = dimension;
 
     std::vector<float> similarities(num_clusters, 0.0F);
-    size_t token_size = indices.size();
-    for (size_t i = 0; i < token_size; ++i) {
+    for (size_t i = 0; i < len; ++i) {
         size_t dim = indices[i];
         if (dim >= rows) {
             continue;
@@ -160,29 +160,28 @@ inline size_t argmax_simd(const std::vector<float>& values) {
     return final_idx;
 }
 
-// AVX512 version of dot_product_float_dense
+// AVX512 version of dot_product_float_dense (raw pointer version for hot paths)
 // Computes dot product between sparse vector (indices + weights) and dense
-// vector
-inline float dot_product_float_dense(std::span<const term_t> indices,
-                                     std::span<const float> weights,
+// vector.
+inline float dot_product_float_dense(const term_t* indices,
+                                     const float* weights, size_t len,
                                      const std::vector<float>& dense) {
-    size_t size = indices.size();
     __m512 sum = _mm512_setzero_ps();
     size_t i = 0;
 
     // Process 16 floats at a time using AVX512
-    for (; i + 16 <= size; i += 16) {
+    for (; i + 16 <= len; i += 16) {
         // Load 16 uint16_t indices (256 bits) and zero-extend to 32-bit
         __m256i idx16 =
-            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&indices[i]));
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(indices + i));
         __m512i idx = _mm512_cvtepu16_epi32(idx16);
 
         // Gather 16 values from dense vector using indices
         __m512 dense_vals =
             _mm512_i32gather_ps(idx, dense.data(), sizeof(float));
 
-        // Load 16 weights
-        __m512 weight_vals = _mm512_loadu_ps(&weights[i]);
+        // Load 16 weights (aligned load - weights must be 64-byte aligned)
+        __m512 weight_vals = _mm512_loadu_ps(weights + i);
 
         // Fused multiply-add: sum += weights * dense_vals
         sum = _mm512_fmadd_ps(weight_vals, dense_vals, sum);
@@ -192,7 +191,7 @@ inline float dot_product_float_dense(std::span<const term_t> indices,
     float result = _mm512_reduce_add_ps(sum);
 
     // Handle remaining elements with scalar code
-    for (; i < size; ++i) {
+    for (; i < len; ++i) {
         result += weights[i] * dense[indices[i]];
     }
 
@@ -204,12 +203,22 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
     -> std::vector<float> {
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0.0F);
+
+    const auto& [idx_t, indices, values] = vectors->indptr_data();
+
     for (size_t i = 0; i < n_vectors; ++i) {
-        const auto& [indices, weights] = vectors->get_vector_view(i);
+        const idx_t start = indptr[i];
+        const idx_t end = indptr[i + 1];
+        const size_t len = end - start;
+
         if (i + 1 < n_vectors) {
-            prefetch_next_vector(vectors, i + 1);
+            const idx_t next_start = indptr[i + 1];
+            const size_t next_len = indptr[i + 2] - next_start;
+            prefetch_vector(indices + next_start, values + next_start,
+                            next_len);
         }
-        results[i] = dot_product_float_dense(indices, weights, dense);
+        results[i] = dot_product_float_dense(indices + start, values + start,
+                                             len, dense);
     }
     return results;
 }

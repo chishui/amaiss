@@ -52,6 +52,9 @@ static void query_single_inverted_list(
             cluster_score_pairs,
             [](const auto& a, const auto& b) { return a.second > b.second; });
     }
+
+    const auto& [indptr, indices, values] = vectors->get_all_data();
+
     for (const auto& [cluster_id, cluster_score] : cluster_score_pairs) {
         if (heap.full() && (cluster_score * heap_factor < heap.peek_score())) {
             if (first_list) {
@@ -64,14 +67,21 @@ static void query_single_inverted_list(
         for (size_t i = 0; i < n_docs; ++i) {
             const auto& doc_id = docs[i];
             if (i + 1 < n_docs) {
-                prefetch_next_vector(vectors, docs[i + 1]);
+                const idx_t next_doc = docs[i + 1];
+                const idx_t next_start = indptr[next_doc];
+                const size_t next_len = indptr[next_doc + 1] - next_start;
+                prefetch_vector(indices + next_start, values + next_start,
+                                next_len);
             }
             auto [_, inserted] = visited.insert(doc_id);
             if (!inserted) {
                 continue;
             }
-            const auto& [indices, weights] = vectors->get_vector_view(doc_id);
-            auto score = dot_product_float_dense(indices, weights, dense);
+            // Direct pointer arithmetic - no function call, no bounds check
+            const idx_t start = indptr[doc_id];
+            const size_t len = indptr[doc_id + 1] - start;
+            auto score = dot_product_float_dense(indices + start,
+                                                 values + start, len, dense);
             heap.add(score, doc_id);
         }
     }
@@ -96,16 +106,21 @@ void SeismicIndex::add(idx_t n, std::vector<idx_t>& indptr,
 void SeismicIndex::build() {
     ArrayInvertedLists inverted_lists(get_dimension(), ElementSize::U32);
     size_t n_docs = vectors_->num_vectors();
+
+    const auto& indptr_data = vectors_->indptr_data();
+    const auto& indices_data = vectors_->indices_data();
+    const auto& values_data = vectors_->values_data();
+
     // inverted_lists.add_entry is thread safe
 #pragma omp parallel for schedule(dynamic, 64)
     for (size_t i = 0; i < n_docs; ++i) {
-        const auto& [indices, values] = vectors_->get_vector_view_coded(i);
-        size_t n_tokens = indices.size();
+        int start = indptr_data[i];
+        int n_tokens = indptr_data[i + 1] - indptr_data[i];
         size_t element_size = vectors_->get_element_size();
-        for (size_t j = 0; j < n_tokens; ++j) {
-            term_t term_id = indices[j];
-            inverted_lists.add_entry(term_id, i,
-                                     values.data() + j * element_size);
+        for (size_t j = start; j < start + n_tokens; ++j) {
+            term_t term_id = indices_data[j];
+            inverted_lists.add_entry(
+                term_id, i, reinterpret_cast<const uint8_t*>(&values_data[j]));
         }
     }
 
@@ -172,11 +187,17 @@ auto SeismicIndex::search(idx_t n, std::vector<idx_t>& indptr,
     double total_single_query_time_ms = 0.0;
 
     // For each query vector
+    const auto* query_indptr = query_vectors.indptr_data();
+    const auto* query_indices = query_vectors.indices_data();
+    const auto* query_values = query_vectors.values_data();
+
 #pragma omp parallel for num_threads(8)
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
         const auto& dense = query_vectors.get_dense_vector_float(query_idx);
+        const idx_t start = query_indptr[query_idx];
+        const size_t len = query_indptr[query_idx + 1] - start;
         const auto& cuts =
-            top_k_tokens(query_vectors.get_vector_view(query_idx), cut);
+            top_k_tokens(query_indices + start, query_values + start, len, cut);
         results[query_idx] =
             std::move(single_query(dense, cuts, k, heap_factor));
     }

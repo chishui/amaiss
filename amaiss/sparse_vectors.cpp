@@ -61,39 +61,6 @@ void SparseVectors::add_vector(const std::vector<term_t>& indices,
     this->indptr_.push_back(offset + static_cast<idx_t>(indices.size()));
 }
 
-// Get spans for the sparse vector at the given index
-SparseVectorView SparseVectors::get_vector_view(idx_t vector_idx) const {
-    if (vector_idx < 0 || vector_idx > static_cast<idx_t>(indptr_.size()) - 2) {
-        throw std::out_of_range("Vector index out of range");
-    }
-
-    idx_t start = indptr_[vector_idx];
-    idx_t end = indptr_[vector_idx + 1];
-    size_t size = end - start;
-
-    return {.indices = std::span<const term_t>(indices_.data() + start, size),
-            .values = std::span<const float>(
-                reinterpret_cast<const float*>(values_.data() +
-                                               (start * config_.element_size)),
-                size)};
-}
-
-SparseVectorViewCoded SparseVectors::get_vector_view_coded(
-    idx_t vector_idx) const {
-    if (vector_idx < 0 || vector_idx > static_cast<idx_t>(indptr_.size()) - 2) {
-        throw std::out_of_range("Vector index out of range");
-    }
-
-    idx_t start = indptr_[vector_idx];
-    idx_t end = indptr_[vector_idx + 1];
-    size_t size = end - start;
-    const size_t& element_size = config_.element_size;
-    return SparseVectorViewCoded{
-        .indices = std::span<const term_t>(indices_.data() + start, size),
-        .values = std::span<const uint8_t>(
-            values_.data() + (start * element_size), size * element_size)};
-}
-
 std::vector<float> SparseVectors::get_dense_vector_float(
     idx_t vector_idx) const {
     if (vector_idx < 0 || vector_idx > static_cast<idx_t>(indptr_.size()) - 2) {

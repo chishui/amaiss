@@ -55,17 +55,20 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
     DedupeTopKHolder<idx_t> holder(k);
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
-        return std::vector<idx_t>();
+        return {};
     }
+
+    // Hoist pointer fetches outside the loop for hot path optimization
+    const auto& [indptr, indices, values] = vectors_->get_all_data();
+
     for (size_t i = 0; i < num_docs; ++i) {
-        const auto& [indices, weights] = vectors_->get_vector_view(i);
-        float score = dot_product_float_dense(indices, weights, dense);
+        const idx_t start = indptr[i];
+        const size_t len = indptr[i + 1] - start;
+        float score = dot_product_float_dense(indices + start, values + start,
+                                              len, dense);
         holder.add(score, i);
     }
-    auto results = holder.top_k();
-    std::reverse(results.begin(), results.end());
-    results.resize(k);
-    return results;
+    return holder.top_k_descending();
 }
 
 const SparseVectors* BrutalIndex::get_vectors() const { return vectors_.get(); }

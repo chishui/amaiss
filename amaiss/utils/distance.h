@@ -1,31 +1,29 @@
 #ifndef DISTANCE_H
 #define DISTANCE_H
-#include <iostream>
-#include <span>
+#include <cstddef>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
-#include "amaiss/utils/prefetch.h"
 
 namespace amaiss {
+
 /**
- * @brief sparse X dense
+ * @brief sparse X dense (raw pointer version for hot paths)
  *
- * @param indices1
- * @param weights1
+ * @param indices pointer to sparse indices
+ * @param weights pointer to sparse weights
+ * @param len number of elements
  * @param dense dense vector is expected to be of size max_index+1
  * @return float
  */
-inline float dot_product_float_dense(std::span<const term_t> indices1,
-                                     std::span<const float> weights1,
+inline float dot_product_float_dense(const term_t* indices,
+                                     const float* weights, size_t len,
                                      const std::vector<float>& dense) {
     float result = 0.0F;
-    size_t size = indices1.size();
-    for (size_t i = 0; i < size; ++i) {
-        result += weights1[i] * dense[indices1[i]];
+    for (size_t i = 0; i < len; ++i) {
+        result += weights[i] * dense[indices[i]];
     }
-
     return result;
 }
 
@@ -34,14 +32,22 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
     -> std::vector<float> {
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0.0F);
+
+    const auto& [indptr, indices, values] = vectors->get_all_data();
+
     for (size_t i = 0; i < n_vectors; ++i) {
-        const auto& [indices, weights] = vectors->get_vector_view(i);
-        for (int j = 0; j < indices.size(); ++j) {
-            auto index = indices[j];
+        const idx_t start = indptr[i];
+        const idx_t end = indptr[i + 1];
+        const size_t len = end - start;
+        const term_t* idx_ptr = indices + start;
+        const float* val_ptr = values + start;
+
+        for (size_t j = 0; j < len; ++j) {
+            auto index = idx_ptr[j];
             if (dense[index] == 0) {
                 continue;
             }
-            results[i] += weights[j] * dense[index];
+            results[i] += val_ptr[j] * dense[index];
         }
     }
     return results;

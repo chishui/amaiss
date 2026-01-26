@@ -28,6 +28,10 @@ SparseVectors summarize_(const SparseVectors* vectors,
     if (offsets.size() <= 1) {
         return summarized_vectors;
     }
+
+    const auto& [indptr_data, indices_data, values_data] =
+        vectors->get_all_data();
+
     for (size_t i = 0; i < offsets.size() - 1; ++i) {
         size_t n_docs = offsets[i + 1] - offsets[i];
         std::unordered_map<term_t, float> summary_map;
@@ -35,11 +39,12 @@ SparseVectors summarize_(const SparseVectors* vectors,
         auto doc_ids = std::span<const idx_t>(
             group_of_doc_ids.data() + offsets[i], n_docs);
         for (const auto& doc_id : doc_ids) {
-            const auto& [indices, values] = vectors->get_vector_view(doc_id);
-            for (size_t j = 0; j < indices.size(); ++j) {
-                auto old = summary_map[indices[j]];
-                auto& value = summary_map[indices[j]];
-                value = std::max(value, values[j]);
+            int start = indptr_data[doc_id];
+            int end = indptr_data[doc_id + 1];
+            for (size_t j = start; j < end; ++j) {
+                auto old = summary_map[indices_data[j]];
+                auto& value = summary_map[indices_data[j]];
+                value = std::max(value, values_data[j]);
                 sum += value - old;
             }
         }
@@ -120,11 +125,6 @@ InvertedListClusters& InvertedListClusters::operator=(
 }
 
 auto InvertedListClusters::get_docs(idx_t idx) const -> std::span<const idx_t> {
-    // Need idx + 1 to be valid, so check offsets_.size() <= idx + 1
-    if ((idx < 0) || (offsets_.size() <= static_cast<size_t>(idx) + 1) ||
-        (offsets_[idx] == offsets_[idx + 1])) {
-        return {};
-    }
     return {docs_.data() + offsets_[idx],
             static_cast<size_t>(offsets_[idx + 1] - offsets_[idx])};
 }

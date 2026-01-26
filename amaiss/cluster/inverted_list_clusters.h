@@ -1,6 +1,7 @@
 #ifndef INVERTED_LIST_CLUSTERS_H
 #define INVERTED_LIST_CLUSTERS_H
 #include <memory>
+#include <span>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
@@ -24,10 +25,6 @@ public:
 
     auto get_docs(idx_t idx) const -> std::span<const idx_t>;
 
-    auto get_summary(idx_t i) const -> const SparseVectorView {
-        if (summaries_ == nullptr) return {};
-        return summaries_->get_vector_view(i);
-    }
     auto summaries() const -> const SparseVectors& { return *summaries_; }
 
     void summarize(const SparseVectors* vectors, float alpha);

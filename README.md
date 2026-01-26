@@ -37,16 +37,44 @@ This will:
 make test
 ```
 
-### Python Usage
+### Python Environment Setup
 
-After building, you can use the Python bindings:
+#### Using venv (Python's built-in virtual environment)
 
 ```bash
+# On Ubuntu, install the venv package first
+sudo apt install python3.12-venv  # Replace with your Python version
+
+# Create a virtual environment
+python3 -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate  # Linux/macOS
+# or
+venv\Scripts\activate     # Windows
+
+# Install the package
 cd amaiss/python
 pip install -e .
 ```
 
-Then run the example:
+#### Using Conda
+
+```bash
+# Create a new conda environment
+conda create -n amaiss python=3.12
+
+# Activate the environment
+conda activate amaiss
+
+# Install the package
+cd amaiss/python
+pip install -e .
+```
+
+### Python Usage
+
+After setting up your environment and building, you can use the Python bindings:
 
 ```bash
 python demos/amaiss_example.py

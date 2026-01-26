@@ -79,11 +79,16 @@ static void map_docs_to_clusters_avx512(
         initialize_cluster_representatives(dense_centroids, center_dimension);
     // release memory
     dense_centroids = std::vector<std::vector<float>>();
+
+    // Hoist pointer fetches outside the loop
+    const auto& [indptr, indices, values] = vectors->get_all_data();
+
     for (size_t i = 0; i < n_docs; ++i) {
         idx_t doc_id = docs[i];
-        const auto& [indices, weights] = vectors->get_vector_view(doc_id);
-        auto similarities = dot_product_sparse_matrix(indices, weights,
-                                                      *cluster_representatives);
+        const idx_t start = indptr[doc_id];
+        const size_t len = indptr[doc_id + 1] - start;
+        auto similarities = dot_product_sparse_matrix(
+            indices + start, values + start, len, *cluster_representatives);
 
         size_t best_cluster = argmax_simd(similarities);
         clusters[best_cluster].push_back(doc_id);
@@ -104,15 +109,21 @@ void map_docs_to_clusters(const SparseVectors* vectors,
     }
     size_t n_clusters = clusters.size();
     size_t n_docs = docs.size();
+
+    const idx_t* indptr = vectors->indptr_data();
+    const term_t* indices = vectors->indices_data();
+    const float* values = vectors->values_data();
+
     for (size_t i = 0; i < n_docs; ++i) {
         const auto& vec = vectors->get_dense_vector_float(docs[i]);
         float max_similarity = std::numeric_limits<float>::lowest();
         size_t best_cluster = 0;
         for (size_t j = 0; j < n_clusters; ++j) {
-            const auto& [indices, weights] =
-                vectors->get_vector_view(clusters[j].at(0));
-            const auto& similarity =
-                dot_product_float_dense(indices, weights, vec);
+            idx_t centroid_doc = clusters[j].at(0);
+            const idx_t start = indptr[centroid_doc];
+            const size_t len = indptr[centroid_doc + 1] - start;
+            const auto& similarity = dot_product_float_dense(
+                indices + start, values + start, len, vec);
             if (similarity > max_similarity) {
                 max_similarity = similarity;
                 best_cluster = j;
