@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <unordered_set>
 #include <vector>
 
@@ -40,22 +41,19 @@ static void query_single_inverted_list(
     // compute dp with all summaries
     auto summary_scores = dot_product_float_dense(&summaries, dense);
     size_t num_vectors = vectors->num_vectors();
-    std::vector<std::pair<size_t, float>> cluster_score_pairs;
-    cluster_score_pairs.reserve(summary_scores.size());
 
-    for (size_t i = 0; i < summary_scores.size(); ++i) {
-        cluster_score_pairs.emplace_back(i, summary_scores[i]);
-    }
-    // sort first list to handle higher impact cluster first to avoid bias
+    std::vector<size_t> cluster_order(summary_scores.size());
+    std::iota(cluster_order.begin(), cluster_order.end(), 0);
     if (first_list) {
-        std::ranges::sort(
-            cluster_score_pairs,
-            [](const auto& a, const auto& b) { return a.second > b.second; });
+        std::ranges::sort(cluster_order, [&](size_t a, size_t b) {
+            return summary_scores[a] > summary_scores[b];
+        });
     }
 
     const auto& [indptr, indices, values] = vectors->get_all_data();
 
-    for (const auto& [cluster_id, cluster_score] : cluster_score_pairs) {
+    for (const size_t& cluster_id : cluster_order) {
+        const auto& cluster_score = summary_scores[cluster_id];
         if (heap.full() && (cluster_score * heap_factor < heap.peek_score())) {
             if (first_list) {
                 break;
