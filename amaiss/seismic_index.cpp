@@ -7,7 +7,6 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
-#include <unordered_set>
 #include <vector>
 
 #include "amaiss/cluster/inverted_list_clusters.h"
@@ -22,6 +21,7 @@
 #else
 #include "amaiss/utils/distance.h"
 #endif
+#include "absl/container/flat_hash_set.h"
 #include "amaiss/utils/prefetch.h"
 #include "amaiss/utils/ranker.h"
 #include "amaiss/utils/vector_process.h"
@@ -31,7 +31,7 @@ namespace amaiss {
 static void query_single_inverted_list(
     const SparseVectors* vectors, const InvertedListClusters& cluster_invlist,
     const std::vector<float>& dense, TopKHolder<idx_t>& heap,
-    std::unordered_set<idx_t>& visited, float heap_factor, bool first_list) {
+    absl::flat_hash_set<idx_t>& visited, float heap_factor, bool first_list) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
     if (csize == 0) {
@@ -181,7 +181,6 @@ auto SeismicIndex::search(idx_t n, std::vector<idx_t>& indptr,
                                  .dimension = static_cast<size_t>(dimension_)});
     query_vectors.add_vectors(indptr, indices, values);
     std::vector<std::vector<idx_t>> results(n);
-    double total_single_query_time_ms = 0.0;
 
     // For each query vector
     const auto* query_indptr = query_vectors.indptr_data();
@@ -220,7 +219,7 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
     if (num_docs == 0) {
         return {};
     }
-    std::unordered_set<idx_t> visited;
+    absl::flat_hash_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
     TopKHolder<idx_t> holder(k);
     bool first_list = true;
