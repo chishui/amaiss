@@ -189,9 +189,10 @@ inline std::vector<int32_t> dot_product_sparse_matrix(
             __m128i prod_lo = _mm256_extracti128_si256(prod, 0);
             __m128i prod_hi = _mm256_extracti128_si256(prod, 1);
 
-            // Extend to 32-bit and add
-            __m256i prod_lo_32 = _mm256_cvtepi16_epi32(prod_lo);
-            __m256i prod_hi_32 = _mm256_cvtepi16_epi32(prod_hi);
+            // Extend to 32-bit and add (use unsigned extension since
+            // uint8*uint8 can be up to 65025, exceeding signed 16-bit max)
+            __m256i prod_lo_32 = _mm256_cvtepu16_epi32(prod_lo);
+            __m256i prod_hi_32 = _mm256_cvtepu16_epi32(prod_hi);
 
             __m256i current_lo = _mm256_loadu_si256(
                 reinterpret_cast<const __m256i*>(&similarities[centroid_idx]));
