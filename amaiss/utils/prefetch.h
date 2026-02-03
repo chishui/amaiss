@@ -6,7 +6,8 @@
 
 namespace amaiss {
 
-inline void prefetch_vector(const term_t* indices, const float* values,
+template <class T>
+inline void prefetch_vector(const term_t* indices, const T* values,
                             size_t len) {
     static constexpr size_t kCacheLineSize = 64;  // bytes
 
@@ -14,7 +15,7 @@ inline void prefetch_vector(const term_t* indices, const float* values,
     const char* values_ptr = reinterpret_cast<const char*>(values);
 
     const size_t indices_bytes = len * sizeof(term_t);
-    const size_t values_bytes = len * sizeof(float);
+    const size_t values_bytes = len * sizeof(T);
 
     for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
         __builtin_prefetch(indices_ptr + offset, 0, 0);

@@ -6,43 +6,47 @@
 
 namespace amaiss {
 
-class DenseVectorMatrix {
-#ifdef __AVX512F__
-    static constexpr int ALIGNMENT = 64;  // AVX512
+#if defined(__AVX512F__)
+static constexpr int MATRIX_ALIGNMENT = 64;  // AVX512
 #else
-    static constexpr int ALIGNMENT = 16;
+static constexpr int MATRIX_ALIGNMENT = 16;
 #endif
 
+template <typename T>
+class DenseVectorMatrixT {
 public:
-    DenseVectorMatrix(const DenseVectorMatrix&) = delete;
-    DenseVectorMatrix& operator=(const DenseVectorMatrix&) = delete;
-    DenseVectorMatrix(DenseVectorMatrix&&) = delete;
+    DenseVectorMatrixT(const DenseVectorMatrixT&) = delete;
+    DenseVectorMatrixT& operator=(const DenseVectorMatrixT&) = delete;
+    DenseVectorMatrixT(DenseVectorMatrixT&&) = delete;
 
-    DenseVectorMatrix(size_t row, size_t dimension)
+    DenseVectorMatrixT(size_t row, size_t dimension)
         : rows_(row), dimension_(dimension) {
-        data_ = static_cast<float*>(
-            std::aligned_alloc(ALIGNMENT, row * dimension * sizeof(float)));
+        data_ = static_cast<T*>(
+            std::aligned_alloc(MATRIX_ALIGNMENT, row * dimension * sizeof(T)));
     }
 
-    ~DenseVectorMatrix() { std::free(data_); }
+    ~DenseVectorMatrixT() { std::free(data_); }
 
-    float get(size_t row, size_t col) const {
+    T get(size_t row, size_t col) const {
         return data_[row * dimension_ + col];
     }
 
-    void set(size_t row, size_t col, float value) {
+    void set(size_t row, size_t col, T value) {
         data_[row * dimension_ + col] = value;
     }
 
-    float* data() const { return data_; }
-    const size_t get_rows() const { return rows_; }
-    const size_t get_dimension() const { return dimension_; }
+    T* data() const { return data_; }
+    size_t get_rows() const { return rows_; }
+    size_t get_dimension() const { return dimension_; }
 
 private:
-    float* data_;
+    T* data_;
     size_t rows_;
     size_t dimension_;
 };
+
+// Alias for backward compatibility
+using DenseVectorMatrix = DenseVectorMatrixT<float>;
 
 }  // namespace amaiss
 

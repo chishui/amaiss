@@ -16,13 +16,13 @@ public:
 
     BrutalIndex(const BrutalIndex&) = delete;
     BrutalIndex& operator=(const BrutalIndex&) = delete;
+    void add(idx_t n, const idx_t* indptr, const term_t* indices,
+             const float* values) override;
 
 protected:
-    void add(idx_t n, std::vector<idx_t>& indptr, std::vector<term_t>& indices,
-             std::vector<float>& values) override;
-
-    auto search(idx_t n, std::vector<idx_t>& indptr,
-                std::vector<term_t>& indices, std::vector<float>& values, int k)
+    auto search(idx_t n, const idx_t* indptr, const term_t* indices,
+                const float* values, int k,
+                const SearchParameters* search_parameters = nullptr)
         -> std::vector<std::vector<idx_t>> override;
     const SparseVectors* get_vectors() const override;
 

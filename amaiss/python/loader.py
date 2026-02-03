@@ -155,3 +155,11 @@ if not loaded:
         )
         logger.error(message)
         sys.exit(1)
+
+# Apply class wrappers to provide Pythonic interface
+import sys
+from importlib import import_module
+
+# Use importlib to avoid circular import issues
+class_wrappers = import_module(".class_wrappers", package=__package__)
+class_wrappers.handle_all_classes(sys.modules[__name__])

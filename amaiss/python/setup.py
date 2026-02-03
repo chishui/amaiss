@@ -54,6 +54,7 @@ def prepare_package():
     # Copy core files
     shutil.copyfile("__init__.py", "amaiss/__init__.py")
     shutil.copyfile("loader.py", "amaiss/loader.py")
+    shutil.copyfile("class_wrappers.py", "amaiss/class_wrappers.py")
 
     # Copy all available variants
     for name in variants:

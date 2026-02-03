@@ -75,9 +75,10 @@
 }
 
 // Use a multi-argument typemap to capture n, k, and labels together
+// For member functions, self is arg 1, so labels is arg 7
 %typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, amaiss::idx_t* labels) {
     // Store n and k in the local variables from the labels typemap
-    n_store7 = $1;  // n (note: labels is arg 7, so locals are numbered 7)
+    n_store7 = $1;  // n (labels is arg 7 including self)
     k_store7 = $5;  // k
     // Allocate labels array: n * k using malloc so NumPy can free it
     $6 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
@@ -157,6 +158,18 @@
     k_store9 = $5;  // k
     $8 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
     if (!$8) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for labels");
+        SWIG_fail;
+    }
+}
+
+// Multi-argument typemap for search with labels followed by SearchParameters
+// For member functions, self is arg 1, so labels is arg 7, search_parameters is arg 8
+%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, amaiss::idx_t* labels, const amaiss::SearchParameters* search_parameters) {
+    n_store7 = $1;  // n
+    k_store7 = $5;  // k
+    $6 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
+    if (!$6) {
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for labels");
         SWIG_fail;
     }

@@ -39,28 +39,43 @@ public:
     SparseVectors(SparseVectors&& other) noexcept = default;
     SparseVectors& operator=(SparseVectors&& other) noexcept = default;
 
-    void add_vectors(
-        const std::vector<idx_t>& indptr, const std::vector<term_t>& indices,
-        const std::vector<float>& weights);  // Get spans for the sparse
+    void add_vectors(const std::vector<idx_t>& indptr,
+                     const std::vector<term_t>& indices,
+                     const std::vector<uint8_t>& weights);
+
+    void add_vectors(const idx_t* indptr, size_t indptr_size,
+                     const term_t* indices, size_t indices_size,
+                     const uint8_t* weights, size_t weights_size);
 
     void add_vector(const std::vector<term_t>& indices,
-                    const std::vector<float>& weights);
+                    const std::vector<uint8_t>& weights);
+
+    void add_vector(const term_t* indices, size_t indices_size,
+                    const uint8_t* weights, size_t weights_size);
 
     size_t num_vectors() const;
     size_t get_dimension() const { return config_.dimension; }
     size_t get_element_size() const { return config_.element_size; }
 
     std::vector<float> get_dense_vector_float(idx_t vector_idx) const;
+    std::vector<uint8_t> get_dense_vector(idx_t vector_idx) const;
     const idx_t* indptr_data() const { return indptr_.data(); }
     const term_t* indices_data() const { return indices_.data(); }
-    const float* values_data() const {
+    const float* values_data_float() const {
         return reinterpret_cast<const float*>(values_.data());
+    }
+
+    const uint8_t* values_data() const { return values_.data(); }
+
+    template <class T>
+    const T* typed_values_data() const {
+        return reinterpret_cast<const T*>(values_.data());
     }
 
     SparseVectorsData get_all_data() const {
         return {.indptr_data = indptr_data(),
                 .indices_data = indices_data(),
-                .values_data = values_data()};
+                .values_data = values_data_float()};
     }
 };
 

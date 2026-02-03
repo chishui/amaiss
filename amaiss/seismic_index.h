@@ -8,10 +8,16 @@
 #include "amaiss/types.h"
 
 namespace amaiss {
-class SeismicIndex : public Index {
-    static constexpr int kDefaultCut = 3;
-    static constexpr float kDefaultHeapFactor = 1.0F;
 
+struct SeismicSearchParameters : public SearchParameters {
+    int cut = 10;
+    float heap_factor = 1.0F;
+    SeismicSearchParameters(int cut, float heap_factor)
+        : cut(cut), heap_factor(heap_factor) {}
+    SeismicSearchParameters() = default;
+};
+
+class SeismicIndex : public Index {
 public:
     explicit SeismicIndex(int dim = 0);
     SeismicIndex(int lambda, int beta, float alpha, int dim = 0);
@@ -21,23 +27,16 @@ public:
     SeismicIndex& operator=(const SeismicIndex&) = delete;
 
     const SparseVectors* get_vectors() const override;
-    void build();
+    void build() override;
 
-    void search(idx_t n, const idx_t* indptr, const term_t* indices,
-                const float* values, int k, int cut, float heap_factor,
-                idx_t* labels);
+    void add(idx_t n, const idx_t* indptr, const term_t* indices,
+             const float* values) override;
 
 private:
-    void add(idx_t n, std::vector<idx_t>& indptr, std::vector<term_t>& indices,
-             std::vector<float>& values) override;
-
-    auto search(idx_t n, std::vector<idx_t>& indptr,
-                std::vector<term_t>& indices, std::vector<float>& values, int k)
+    auto search(idx_t n, const idx_t* indptr, const term_t* indices,
+                const float* values, int k,
+                const SearchParameters* search_parameters = nullptr)
         -> std::vector<std::vector<idx_t>> override;
-
-    auto search(idx_t n, std::vector<idx_t>& indptr,
-                std::vector<term_t>& indices, std::vector<float>& values, int k,
-                int cut, float heap_factor) -> std::vector<std::vector<idx_t>>;
 
     auto single_query(const std::vector<float>& dense,
                       const std::vector<term_t>& cuts, int k, float heap_factor)

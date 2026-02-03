@@ -8,28 +8,30 @@
 
 namespace amaiss {
 
+struct SearchParameters {
+    virtual ~SearchParameters() = default;
+};
+
 class Index {
 public:
     explicit Index(int dim = 0);
     virtual ~Index() = default;
     virtual void add(idx_t n, const idx_t* indptr, const term_t* indices,
-                     const float* values);
+                     const float* values) = 0;
+    virtual void build();
     virtual void search(idx_t n, const idx_t* indptr, const term_t* indices,
-                        const float* values, int k,
-                        idx_t* labels);  // Pre-allocated: n * k
-    virtual const SparseVectors* get_vectors() const { return nullptr; }
+                        const float* values, int k, idx_t* labels,
+                        const SearchParameters* search_parameters =
+                            nullptr);  // Pre-allocated: n * k
+    virtual const SparseVectors* get_vectors() const = 0;
 
     int get_dimension() const { return dimension_; }
 
 protected:
-    virtual void add(idx_t n, std::vector<idx_t>& indptr,
-                     std::vector<term_t>& indices,
-                     std::vector<float>& values) = 0;
-
-    virtual auto search(idx_t n, std::vector<idx_t>& indptr,
-                        std::vector<term_t>& indices,
-                        std::vector<float>& values, int k)
-        -> std::vector<std::vector<idx_t>> = 0;
+    virtual auto search(idx_t n, const idx_t* indptr, const term_t* indices,
+                        const float* values, int k,
+                        const SearchParameters* search_parameters = nullptr)
+        -> std::vector<std::vector<idx_t>>;
 
     int dimension_;
 };

@@ -34,6 +34,11 @@ void throw_if_any_null(Args*... ptrs) {
     throw_if_any_null("unexpected nullptr", ptrs...);
 }
 
+[[noreturn]] inline void throw_not_implemented(
+    const char* msg = "not implemented") {
+    throw std::runtime_error(msg);
+}
+
 }  // namespace amaiss
 
 #endif  // COMMON_H

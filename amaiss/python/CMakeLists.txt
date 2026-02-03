@@ -150,4 +150,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py
     ${CMAKE_CURRENT_BINARY_DIR}/__init__.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/loader.py
     ${CMAKE_CURRENT_BINARY_DIR}/loader.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/class_wrappers.py
+    ${CMAKE_CURRENT_BINARY_DIR}/class_wrappers.py COPYONLY)
 

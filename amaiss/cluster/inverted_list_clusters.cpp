@@ -1,6 +1,7 @@
 #include "amaiss/cluster/inverted_list_clusters.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +20,7 @@ namespace {
  * @param alpha prune ratio
  * @return SparseVectors
  */
+template <class T>
 SparseVectors summarize_(const SparseVectors* vectors,
                          const std::vector<idx_t>& group_of_doc_ids,
                          const std::vector<idx_t>& offsets, float alpha) {
@@ -28,13 +30,13 @@ SparseVectors summarize_(const SparseVectors* vectors,
     if (offsets.size() <= 1) {
         return summarized_vectors;
     }
-
-    const auto& [indptr_data, indices_data, values_data] =
-        vectors->get_all_data();
-
+    const auto element_size = vectors->get_element_size();
+    const auto& indptr_data = vectors->indptr_data();
+    const auto& indices_data = vectors->indices_data();
+    const auto& values_data = vectors->values_data();
     for (size_t i = 0; i < offsets.size() - 1; ++i) {
         size_t n_docs = offsets[i + 1] - offsets[i];
-        std::unordered_map<term_t, float> summary_map;
+        std::unordered_map<term_t, T> summary_map;
         float sum = 0.0F;
         auto doc_ids = std::span<const idx_t>(
             group_of_doc_ids.data() + offsets[i], n_docs);
@@ -42,16 +44,18 @@ SparseVectors summarize_(const SparseVectors* vectors,
             int start = indptr_data[doc_id];
             int end = indptr_data[doc_id + 1];
             for (size_t j = start; j < end; ++j) {
-                auto old = summary_map[indices_data[j]];
+                const auto old = summary_map[indices_data[j]];
                 auto& value = summary_map[indices_data[j]];
-                value = std::max(value, values_data[j]);
+                // j is element index, need byte offset for T access
+                value = std::max(value, *reinterpret_cast<const T*>(
+                                            values_data + j * sizeof(T)));
                 sum += value - old;
             }
         }
 
         // Convert summary_map to vector of pairs
-        std::vector<std::pair<term_t, float>> summary_vec(summary_map.begin(),
-                                                          summary_map.end());
+        std::vector<std::pair<term_t, T>> summary_vec(summary_map.begin(),
+                                                      summary_map.end());
 
         // Sort by value in descending order
         std::ranges::sort(summary_vec, [](const auto& a, const auto& b) {
@@ -75,7 +79,7 @@ SparseVectors summarize_(const SparseVectors* vectors,
 
         // Break into separate terms and values vectors
         std::vector<term_t> terms;
-        std::vector<float> values;
+        std::vector<T> values;
         terms.reserve(summary_vec.size());
         values.reserve(summary_vec.size());
         for (const auto& [term, value] : summary_vec) {
@@ -83,7 +87,10 @@ SparseVectors summarize_(const SparseVectors* vectors,
             values.push_back(value);
         }
 
-        summarized_vectors.add_vector(terms, values);
+        summarized_vectors.add_vector(
+            terms.data(), terms.size(),
+            reinterpret_cast<const uint8_t*>(values.data()),
+            values.size() * sizeof(T));
     }
     return summarized_vectors;
 }
@@ -134,8 +141,17 @@ void InvertedListClusters::summarize(const SparseVectors* vectors,
     if (summaries_ != nullptr) {
         summaries_.reset();
     }
-    auto summarized_vectors = summarize_(vectors, docs_, offsets_, alpha);
-    summaries_ = std::make_unique<SparseVectors>(std::move(summarized_vectors));
+    const auto element_size = vectors->get_element_size();
+    if (element_size == U32) {
+        summaries_ = std::make_unique<SparseVectors>(
+            std::move(summarize_<float>(vectors, docs_, offsets_, alpha)));
+    } else if (element_size == U16) {
+        summaries_ = std::make_unique<SparseVectors>(
+            std::move(summarize_<uint16_t>(vectors, docs_, offsets_, alpha)));
+    } else {
+        summaries_ = std::make_unique<SparseVectors>(
+            std::move(summarize_<uint8_t>(vectors, docs_, offsets_, alpha)));
+    }
 }
 
 }  // namespace amaiss

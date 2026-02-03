@@ -8,8 +8,9 @@
 #include "amaiss/utils/ranker.h"
 
 namespace amaiss {
-inline std::vector<term_t> top_k_tokens(const term_t* indices,
-                                        const float* weights, int size, int k) {
+template <class T>
+inline std::vector<term_t> top_k_tokens(const term_t* indices, const T* weights,
+                                        int size, int k) {
     TopKHolder<term_t> holder(k);
     for (int i = 0; i < size; ++i) {
         holder.add(weights[i], indices[i]);

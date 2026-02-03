@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
+#include "amaiss/utils/checks.h"
 #include "amaiss/utils/distance.h"
 #include "amaiss/utils/print.h"
 #include "amaiss/utils/ranker.h"
@@ -15,31 +16,40 @@ namespace amaiss {
 
 BrutalIndex::BrutalIndex(int dim) : Index(dim) {}
 
-void BrutalIndex::add(idx_t n, std::vector<idx_t>& indptr,
-                      std::vector<term_t>& indices,
-                      std::vector<float>& values) {
+void BrutalIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
+                      const float* values) {
+    throw_if_not_positive(n);
+    throw_if_any_null(indptr, indices, values);
+
+    size_t indptr_size = n + 1;
+    size_t nnz = indptr[n];  // Total non-zeros
+    constexpr int element_size = U32;
     if (vectors_ == nullptr) {
         vectors_ = std::unique_ptr<SparseVectors>(
-            new SparseVectors({.element_size = ElementSize::U32,
+            new SparseVectors({.element_size = element_size,
                                .dimension = static_cast<size_t>(dimension_)}));
     }
-    vectors_->add_vectors(indptr, indices, values);
+    vectors_->add_vectors(indptr, indptr_size, indices, nnz,
+                          reinterpret_cast<const uint8_t*>(values),
+                          nnz * element_size);
 }
 
-auto BrutalIndex::search(idx_t n, std::vector<idx_t>& indptr,
-                         std::vector<term_t>& indices,
-                         std::vector<float>& values, int k)
+auto BrutalIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
+                         const float* values, int k,
+                         const SearchParameters* search_parameters)
     -> std::vector<std::vector<idx_t>> {
     if (vectors_ == nullptr || n == 0) {
         return std::vector<std::vector<idx_t>>(n);
     }
-
+    size_t indptr_size = n + 1;
+    size_t nnz = indptr[n];  // Total non-zeros
     // Create query vectors from input
     SparseVectors query_vectors({.element_size = ElementSize::U32,
                                  .dimension = static_cast<size_t>(dimension_)});
-    query_vectors.add_vectors(indptr, indices, values);
+    query_vectors.add_vectors(indptr, indptr_size, indices, nnz,
+                              reinterpret_cast<const uint8_t*>(values),
+                              nnz * U32);
     std::vector<std::vector<idx_t>> results(n);
-
     // For each query vector
 #pragma omp parallel for
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
@@ -65,7 +75,7 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
         const idx_t start = indptr[i];
         const size_t len = indptr[i + 1] - start;
         float score = dot_product_float_dense(indices + start, values + start,
-                                              len, dense);
+                                              len, dense.data());
         holder.add(score, i);
     }
     return holder.top_k_descending();

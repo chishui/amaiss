@@ -1,6 +1,7 @@
 #include "amaiss/invlists/inverted_lists.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <map>
 #include <stdexcept>
@@ -27,6 +28,29 @@ public:
 private:
     std::atomic<uint8_t>& lock_;
 };
+
+static std::vector<std::pair<float, idx_t>> create_value_doc_id_pair(
+    const std::vector<uint8_t>& codes, const size_t element_size,
+    const std::vector<idx_t>& doc_ids, const size_t n_docs) {
+    std::vector<std::pair<float, idx_t>> value_doc_pairs;
+    value_doc_pairs.reserve(n_docs);
+
+    for (size_t i = 0; i < n_docs; ++i) {
+        float value = 0.0F;
+        const uint8_t* value_ptr = codes.data() + i * element_size;
+        if (element_size == U32) {
+            value = *reinterpret_cast<const float*>(value_ptr);
+        } else if (element_size == U16) {
+            value = static_cast<float>(
+                *reinterpret_cast<const uint16_t*>(value_ptr));
+        } else {
+            value = static_cast<float>(*value_ptr);
+        }
+        value_doc_pairs.emplace_back(value, doc_ids[i]);
+    }
+    return value_doc_pairs;
+}
+
 }  // namespace
 
 InvertedList::InvertedList(size_t element_size) : element_size_(element_size) {}
@@ -60,12 +84,8 @@ std::vector<idx_t> InvertedList::prune_and_keep_doc_ids(size_t lambda) {
     }
 
     // Create pairs of (float_value, index) for sorting
-    std::vector<std::pair<float, idx_t>> value_doc_pairs;
-    value_doc_pairs.reserve(n_docs);
-
-    for (size_t i = 0; i < n_docs; ++i) {
-        value_doc_pairs.emplace_back(((float*)codes_.data())[i], doc_ids_[i]);
-    }
+    std::vector<std::pair<float, idx_t>> value_doc_pairs =
+        create_value_doc_id_pair(codes_, element_size_, doc_ids_, n_docs);
 
     // Sort by float value in descending order (highest first)
     std::ranges::sort(value_doc_pairs, [](const auto& a, const auto& b) {
