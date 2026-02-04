@@ -1,0 +1,36 @@
+#ifndef FILE_IO_H
+#define FILE_IO_H
+
+#include <cstdio>
+
+#include "amaiss/io/index_io.h"
+
+namespace amaiss {
+class FileIOReader : public IOReader {
+public:
+    explicit FileIOReader(char* filename);
+    explicit FileIOReader(FILE* file);
+    ~FileIOReader();
+
+    size_t read(void* ptr, size_t size, size_t nitems) override;
+    void close();
+
+private:
+    FILE* file_;
+};
+
+class FileIOWriter : public IOWriter {
+public:
+    explicit FileIOWriter(char* filename);
+    explicit FileIOWriter(FILE* file);
+    ~FileIOWriter();
+
+    void write(void* ptr, size_t size, size_t nitems) override;
+    void close();  // Call explicitly if you need error handling on close
+
+private:
+    FILE* file_;
+};
+}  // namespace amaiss
+
+#endif  // FILE_IO_H

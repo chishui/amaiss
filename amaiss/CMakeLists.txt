@@ -9,6 +9,7 @@ set(AMAISS_SRC
     cluster/kmeans_utils.cpp
     cluster/inverted_list_clusters.cpp
     invlists/inverted_lists.cpp
+    io/buffered_io.cpp
     io/file_io.cpp
     io/index_io.cpp
 )
@@ -32,6 +33,7 @@ set(AMAISS_HEADERS
     cluster/inverted_list_clusters.h
     invlists/inverted_lists.h
     io/io.h
+    io/buffered_io.h
     io/seismic_invlists_writer.h
     io/file_io.h
     io/index_io.h
