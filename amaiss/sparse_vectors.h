@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "amaiss/io/io.h"
 #include "amaiss/types.h"
 
 namespace amaiss {
@@ -22,13 +23,9 @@ struct SparseVectorsData {
     const float* values_data;
 };
 
-class SparseVectors {
-    std::vector<idx_t> indptr_;
-    std::vector<term_t> indices_;
-    std::vector<uint8_t> values_;
-    SparseVectorsConfig config_;
-
+class SparseVectors : public Serializable {
 public:
+    SparseVectors() = default;
     explicit SparseVectors(SparseVectorsConfig config);
     ~SparseVectors() = default;
 
@@ -77,8 +74,18 @@ public:
                 .indices_data = indices_data(),
                 .values_data = values_data_float()};
     }
+
+    void serialize(IOWriter* writer) const override;
+    void deserialize(IOReader* reader) override;
+
+private:
+    std::vector<idx_t> indptr_;
+    std::vector<term_t> indices_;
+    std::vector<uint8_t> values_;
+    SparseVectorsConfig config_;
 };
 
+static SparseVectors empty_sparse_vectors = SparseVectors();
 }  // namespace amaiss
 
 #endif  // SPARSE_VECTORS_H

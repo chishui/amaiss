@@ -154,4 +154,43 @@ void InvertedListClusters::summarize(const SparseVectors* vectors,
     }
 }
 
+void InvertedListClusters::serialize(IOWriter* writer) const {
+    size_t n_docs = docs_.size();
+    writer->write(&n_docs, sizeof(size_t), 1);
+    if (n_docs > 0) {
+        writer->write(const_cast<idx_t*>(docs_.data()), sizeof(idx_t), n_docs);
+    }
+    size_t n_offsets = offsets_.size();
+    writer->write(&n_offsets, sizeof(size_t), 1);
+    if (n_offsets > 0) {
+        writer->write(const_cast<idx_t*>(offsets_.data()), sizeof(idx_t),
+                      n_offsets);
+    }
+    if (summaries_ == nullptr) {
+        empty_sparse_vectors.serialize(writer);
+    } else {
+        summaries_->serialize(writer);
+    }
+}
+
+void InvertedListClusters::deserialize(IOReader* reader) {
+    size_t n_docs = 0;
+    reader->read(&n_docs, sizeof(size_t), 1);
+    if (n_docs > 0) {
+        docs_.resize(n_docs);
+        reader->read(docs_.data(), sizeof(idx_t), n_docs);
+    }
+    size_t n_offsets = 0;
+    reader->read(&n_offsets, sizeof(size_t), 1);
+    if (n_offsets > 0) {
+        offsets_.resize(n_offsets);
+        reader->read(offsets_.data(), sizeof(idx_t), n_offsets);
+    }
+    summaries_ = std::make_unique<SparseVectors>();
+    summaries_->deserialize(reader);
+    if (summaries_->num_vectors() == 0) {
+        summaries_.reset();
+    }
+}
+
 }  // namespace amaiss

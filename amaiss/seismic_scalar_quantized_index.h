@@ -1,6 +1,7 @@
 #ifndef SEISMIC_SCALAR_QUANTIZED_INDEX_H
 #define SEISMIC_SCALAR_QUANTIZED_INDEX_H
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -19,8 +20,13 @@ struct SeismicSQSearchParameters : public SeismicSearchParameters {
         : SeismicSearchParameters(cut, heap_factor), vmax(vmax), vmin(vmin) {}
 };
 
-class SeismicScalarQuantizedIndex : public Index {
+class SeismicScalarQuantizedIndex : public Index, public IndexIO {
+    friend void write_index(Index* index, char* filename);
+    friend Index* read_index(char* filename);
+
 public:
+    static constexpr std::array<char, 4> name = {'S', 'E', 'S', 'Q'};
+    explicit SeismicScalarQuantizedIndex(int dim);
     SeismicScalarQuantizedIndex(QuantizerType quantizer_type, float vmin,
                                 float vmax, int lambda, int beta, float alpha,
                                 int dim);
@@ -29,13 +35,21 @@ public:
     SeismicScalarQuantizedIndex(const SeismicScalarQuantizedIndex&) = delete;
     SeismicScalarQuantizedIndex& operator=(const SeismicScalarQuantizedIndex&) =
         delete;
-
+    std::array<char, 4> id() const override { return name; }
     void add(idx_t n, const idx_t* indptr, const term_t* indices,
              const float* values) override;
     void build() override;
     const SparseVectors* get_vectors() const override { return vectors_.get(); }
 
+    const ScalarQuantizer& get_scalar_quantizer() const { return sq_; }
+
 private:
+    // interfaces of IndexIO
+    void write_index(IOWriter* io_writer) override;
+    void read_index(IOReader* io_reader) override;
+    void write_header(IOWriter* io_writer);
+    void read_header(IOReader* io_reader);
+
     auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                 const float* values, int k,
                 const SearchParameters* search_parameters = nullptr)
@@ -46,7 +60,7 @@ private:
     auto single_query(const std::vector<uint8_t>& dense,
                       const std::vector<term_t>& cuts, int k, float heap_factor)
         -> std::vector<idx_t>;
-    ScalarQuantizer sq;
+    ScalarQuantizer sq_;
     std::unique_ptr<SparseVectors> vectors_;
     int lambda_;
     int beta_;

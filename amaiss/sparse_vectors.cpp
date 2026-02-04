@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "amaiss/io/io.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 
@@ -112,5 +113,49 @@ std::vector<uint8_t> SparseVectors::get_dense_vector(idx_t vector_idx) const {
 size_t SparseVectors::num_vectors() const {
     if (indptr_.empty()) return 0;
     return indptr_.size() - 1;
+}
+
+void SparseVectors::serialize(IOWriter* io_writer) const {
+    size_t vector_count = num_vectors();
+    io_writer->write(&vector_count, sizeof(size_t), 1);
+    if (vector_count > 0) {
+        auto dimension = get_dimension();
+        io_writer->write(&dimension, sizeof(size_t), 1);
+        auto element_size = get_element_size();
+        io_writer->write(&element_size, sizeof(size_t), 1);
+        size_t indptr_size = vector_count + 1;
+        io_writer->write(const_cast<idx_t*>(indptr_.data()), sizeof(idx_t),
+                         indptr_size);
+        size_t indices_size = indptr_[vector_count];
+        io_writer->write(const_cast<term_t*>(indices_.data()), sizeof(term_t),
+                         indices_size);
+        size_t value_size = indptr_[vector_count] * element_size;
+        io_writer->write(const_cast<uint8_t*>(values_.data()), sizeof(uint8_t),
+                         value_size);
+    }
+}
+
+void SparseVectors::deserialize(IOReader* io_reader) {
+    size_t vector_count = 0;
+    io_reader->read(&vector_count, sizeof(size_t), 1);
+    if (vector_count > 0) {
+        size_t dimension = 0;
+        io_reader->read(&dimension, sizeof(size_t), 1);
+        size_t element_size = 0;
+        io_reader->read(&element_size, sizeof(size_t), 1);
+        config_ = SparseVectorsConfig(element_size, dimension);
+
+        size_t indptr_size = vector_count + 1;
+        indptr_.resize(indptr_size);
+        io_reader->read(indptr_.data(), sizeof(idx_t), indptr_size);
+
+        size_t indices_size = indptr_[vector_count];
+        indices_.resize(indices_size);
+        io_reader->read(indices_.data(), sizeof(term_t), indices_size);
+
+        size_t value_size = indptr_[vector_count] * element_size;
+        values_.resize(value_size);
+        io_reader->read(values_.data(), sizeof(uint8_t), value_size);
+    }
 }
 }  // namespace amaiss

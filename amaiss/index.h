@@ -1,6 +1,7 @@
 #ifndef INDEX_H
 #define INDEX_H
 
+#include <array>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
@@ -16,6 +17,7 @@ class Index {
 public:
     explicit Index(int dim = 0);
     virtual ~Index() = default;
+    virtual std::array<char, 4> id() const = 0;
     virtual void add(idx_t n, const idx_t* indptr, const term_t* indices,
                      const float* values) = 0;
     virtual void build();

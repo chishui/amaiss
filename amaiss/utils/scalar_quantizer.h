@@ -61,6 +61,8 @@ public:
     }
 
     QuantizerType get_quantizer_type() const { return qtype_; }
+    float get_min() const { return vmin_; }
+    float get_max() const { return vmax_; }
 
 private:
     /// Encode a single float value to 8-bit

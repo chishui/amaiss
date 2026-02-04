@@ -5,6 +5,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 #include "amaiss/types.h"
+#include "amaiss/io/io.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/index.h"
@@ -14,6 +15,7 @@
 #include "amaiss/utils/scalar_quantizer.h"
 #include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/index_factory.h"
+#include "amaiss/io/index_io.h"
 %}
 
 %init %{
@@ -21,11 +23,22 @@ import_array();
 %}
 
 %include "amaiss_typemaps.i"
-
+%include "amaiss/io/io.h"
 %include "amaiss/types.h"
 %include "amaiss/sparse_vectors.h"
 %include "amaiss/invlists/inverted_lists.h"
 %include "amaiss/utils/scalar_quantizer.h"
+
+// IO classes needed for index serialization (must come before index.h)
+// Ignore internal IO classes - not needed in Python API
+%ignore amaiss::SeismicIndex::write_index;
+%ignore amaiss::SeismicIndex::read_index;
+%ignore amaiss::SeismicScalarQuantizedIndex::write_index;
+%ignore amaiss::SeismicScalarQuantizedIndex::read_index;
+%ignore amaiss::SparseVectors::serialize;
+%ignore amaiss::SparseVectors::deserialize;
+%ignore amaiss::InvertedListClusters::serialize;
+%ignore amaiss::InvertedListClusters::deserialize;
 
 // Ignore the protected std::vector-based methods
 %ignore amaiss::Index::add(idx_t, std::vector<idx_t>&, std::vector<term_t>&, std::vector<float>&);
@@ -68,3 +81,7 @@ import_array();
 // index_factory returns a new object - Python takes ownership
 %newobject amaiss::index_factory;
 %include "amaiss/index_factory.h"
+
+// read_index returns a new object - Python takes ownership
+%newobject amaiss::read_index;
+%include "amaiss/io/index_io.h"

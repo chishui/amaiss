@@ -13,6 +13,8 @@
 #include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/index.h"
 #include "amaiss/invlists/inverted_lists.h"
+#include "amaiss/io/io.h"
+#include "amaiss/io/seismic_invlists_writer.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 #if defined(__AVX512F__)
@@ -111,12 +113,14 @@ static void query_single_inverted_list(
         }
     }
 }
+SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex(int dim)
+    : Index(dim) {}
 
 SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex(
     QuantizerType quantizer_type, float vmin, float vmax, int lambda, int beta,
     float alpha, int dim)
     : Index(dim),
-      sq(quantizer_type, vmin, vmax),
+      sq_(quantizer_type, vmin, vmax),
       lambda_(lambda),
       beta_(beta),
       alpha_(alpha) {}
@@ -129,14 +133,14 @@ void SeismicScalarQuantizedIndex::add(idx_t n, const idx_t* indptr,
 
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
-    const size_t element_size = sq.bytes_per_value();
+    const size_t element_size = sq_.bytes_per_value();
     if (vectors_ == nullptr) {
         vectors_ = std::unique_ptr<SparseVectors>(
             new SparseVectors({.element_size = element_size,
                                .dimension = static_cast<size_t>(dimension_)}));
     }
     std::vector<uint8_t> codes(nnz * element_size);
-    sq.encode(values, codes.data(), nnz);
+    sq_.encode(values, codes.data(), nnz);
     vectors_->add_vectors(indptr, indptr_size, indices, nnz, codes.data(),
                           nnz * element_size);
 }
@@ -147,15 +151,15 @@ void SeismicScalarQuantizedIndex::add(idx_t n, const idx_t* indptr,
 std::vector<uint8_t> SeismicScalarQuantizedIndex::encode(
     const float* values, size_t nnz,
     const SearchParameters* search_parameters) {
-    const size_t element_size = sq.bytes_per_value();
+    const size_t element_size = sq_.bytes_per_value();
     std::vector<uint8_t> codes(nnz * element_size);
     if (typeid(*search_parameters) == typeid(SeismicSearchParameters)) {
-        sq.encode(values, codes.data(), nnz);
+        sq_.encode(values, codes.data(), nnz);
     } else if (typeid(*search_parameters) ==
                typeid(SeismicSQSearchParameters)) {
         const auto* seismic_sq_search_parameters =
             static_cast<const SeismicSQSearchParameters*>(search_parameters);
-        ScalarQuantizer search_sq(sq.get_quantizer_type(),
+        ScalarQuantizer search_sq(sq_.get_quantizer_type(),
                                   seismic_sq_search_parameters->vmin,
                                   seismic_sq_search_parameters->vmax);
         search_sq.encode(values, codes.data(), nnz);
@@ -166,7 +170,7 @@ std::vector<uint8_t> SeismicScalarQuantizedIndex::encode(
 }
 
 void SeismicScalarQuantizedIndex::build() {
-    ArrayInvertedLists inverted_lists(get_dimension(), sq.bytes_per_value());
+    ArrayInvertedLists inverted_lists(get_dimension(), sq_.bytes_per_value());
     size_t n_docs = vectors_->num_vectors();
     const auto& indptr_data = vectors_->indptr_data();
     const auto& indices_data = vectors_->indices_data();
@@ -212,7 +216,7 @@ auto SeismicScalarQuantizedIndex::search(
     size_t nnz = indptr[n];  // Total non-zeros
 
     // construct query vector
-    const size_t element_size = sq.bytes_per_value();
+    const size_t element_size = sq_.bytes_per_value();
     SparseVectors query_vectors({.element_size = element_size,
                                  .dimension = static_cast<size_t>(dimension_)});
     std::vector<uint8_t> codes = encode(values, nnz, search_parameters);
@@ -278,5 +282,48 @@ auto SeismicScalarQuantizedIndex::single_query(
     }
 
     return holder.top_k_descending();
+}
+
+void SeismicScalarQuantizedIndex::write_index(IOWriter* io_writer) {
+    write_header(io_writer);
+    // write vectors
+    if (vectors_ == nullptr) {
+        empty_sparse_vectors.serialize(io_writer);
+    } else {
+        vectors_->serialize(io_writer);
+    }
+    SeismicInvertedListsWriter inv_list_writer(clustered_inverted_lists);
+    inv_list_writer.serialize(io_writer);
+}
+
+void SeismicScalarQuantizedIndex::read_index(IOReader* io_reader) {
+    read_header(io_reader);
+    SparseVectors tmp_vectors;
+    tmp_vectors.deserialize(io_reader);
+    if (tmp_vectors.num_vectors() > 0) {
+        vectors_ = std::make_unique<SparseVectors>(std::move(tmp_vectors));
+    }
+    SeismicInvertedListsWriter inv_list_writer({});
+    inv_list_writer.deserialize(io_reader);
+    clustered_inverted_lists = std::move(inv_list_writer.release());
+}
+
+void SeismicScalarQuantizedIndex::write_header(IOWriter* io_writer) {
+    auto sq_type = sq_.get_quantizer_type();
+    io_writer->write(&sq_type, sizeof(QuantizerType), 1);
+    auto vmin = sq_.get_min();
+    io_writer->write(&vmin, sizeof(float), 1);
+    auto vmax = sq_.get_max();
+    io_writer->write(&vmax, sizeof(float), 1);
+}
+
+void SeismicScalarQuantizedIndex::read_header(IOReader* io_reader) {
+    QuantizerType sq_type = QuantizerType::QT_8bit;
+    float vmin = 0.0F;
+    float vmax = 1.0F;
+    io_reader->read(&sq_type, sizeof(QuantizerType), 1);
+    io_reader->read(&vmin, sizeof(float), 1);
+    io_reader->read(&vmax, sizeof(float), 1);
+    sq_ = ScalarQuantizer(sq_type, vmin, vmax);
 }
 }  // namespace amaiss

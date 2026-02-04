@@ -1,9 +1,11 @@
 #ifndef SEISMIC_INDEX_H
 #define SEISMIC_INDEX_H
+#include <array>
 #include <vector>
 
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/index.h"
+#include "amaiss/io/io.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
@@ -17,11 +19,17 @@ struct SeismicSearchParameters : public SearchParameters {
     SeismicSearchParameters() = default;
 };
 
-class SeismicIndex : public Index {
+class SeismicIndex : public Index, public IndexIO {
+    friend void write_index(Index* index, char* filename);
+    friend Index* read_index(char* filename);
+
 public:
+    static constexpr std::array<char, 4> name = {'S', 'E', 'I', 'S'};
+
     explicit SeismicIndex(int dim = 0);
     SeismicIndex(int lambda, int beta, float alpha, int dim = 0);
     ~SeismicIndex() override = default;
+    std::array<char, 4> id() const override { return name; }
 
     SeismicIndex(const SeismicIndex&) = delete;
     SeismicIndex& operator=(const SeismicIndex&) = delete;
@@ -33,6 +41,10 @@ public:
              const float* values) override;
 
 private:
+    // override of IndexIO
+    void write_index(IOWriter* io_writer) override;
+    void read_index(IOReader* io_reader) override;
+
     auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                 const float* values, int k,
                 const SearchParameters* search_parameters = nullptr)

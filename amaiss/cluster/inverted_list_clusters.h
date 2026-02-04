@@ -4,13 +4,14 @@
 #include <span>
 #include <vector>
 
+#include "amaiss/io/io.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/dense_vector_matrix.h"
 
 namespace amaiss {
 
-class InvertedListClusters {
+class InvertedListClusters : public Serializable {
 public:
     InvertedListClusters() = default;
     InvertedListClusters(const std::vector<std::vector<idx_t>>& docs);
@@ -32,6 +33,9 @@ public:
     size_t cluster_size() const {
         return summaries_ == nullptr ? 0 : summaries_->num_vectors();
     }
+
+    void serialize(IOWriter* writer) const override;
+    void deserialize(IOReader* reader) override;
 
 private:
     std::vector<idx_t> docs_;

@@ -1,6 +1,7 @@
 #include "amaiss/seismic_index.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <numeric>
@@ -10,6 +11,7 @@
 #include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/index.h"
 #include "amaiss/invlists/inverted_lists.h"
+#include "amaiss/io/seismic_invlists_writer.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
@@ -217,5 +219,27 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
 
 const SparseVectors* SeismicIndex::get_vectors() const {
     return vectors_.get();
+}
+
+void SeismicIndex::write_index(IOWriter* io_writer) {
+    // write vectors
+    if (vectors_ == nullptr) {
+        empty_sparse_vectors.serialize(io_writer);
+    } else {
+        vectors_->serialize(io_writer);
+    }
+    SeismicInvertedListsWriter inv_list_writer(clustered_inverted_lists);
+    inv_list_writer.serialize(io_writer);
+}
+
+void SeismicIndex::read_index(IOReader* io_reader) {
+    SparseVectors tmp_vectors;
+    tmp_vectors.deserialize(io_reader);
+    if (tmp_vectors.num_vectors() > 0) {
+        vectors_ = std::make_unique<SparseVectors>(std::move(tmp_vectors));
+    }
+    SeismicInvertedListsWriter inv_list_writer({});
+    inv_list_writer.deserialize(io_reader);
+    clustered_inverted_lists = std::move(inv_list_writer.release());
 }
 }  // namespace amaiss

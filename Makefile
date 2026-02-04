@@ -18,6 +18,7 @@ all: clean
 
 clean:
 	-rm -rf build
+	-rm -rf amaiss/python/build
 
 build: clean
 	mkdir -p build
