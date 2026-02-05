@@ -5,8 +5,10 @@
 
 #if defined(__AVX512F__)
 #include "amaiss/utils/distance_avx512.h"
-// #elif defined(__AVX2__)
-// #include "amaiss/utils/distance_avx2.h"
+#elif defined(__AVX2__)
+#include "amaiss/utils/distance_avx2.h"
+#elif defined(__aarch64__)
+#include "amaiss/utils/distance_neon.h"
 #else
 #include "amaiss/utils/distance.h"
 #endif

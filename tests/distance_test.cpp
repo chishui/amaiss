@@ -1,12 +1,12 @@
-#include "amaiss/utils/distance.h"
-
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
+#include "amaiss/utils/distance_simd.h"
 
 using amaiss::dot_product_float_dense;
 using amaiss::dot_product_uint16_dense;
@@ -257,7 +257,7 @@ TEST(DotProductDenseTemplate, uint8_values) {
     std::vector<uint8_t> dense = {5, 0, 3, 0};
 
     auto results =
-        amaiss::dot_product_vectors_dense<uint8_t>(&vectors, dense.data());
+        amaiss::dot_product_uint8_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 10*5 + 20*3 = 50 + 60 = 110
@@ -279,7 +279,7 @@ TEST(DotProductDenseTemplate, uint16_values) {
     std::vector<uint16_t> dense = {0, 10, 0, 20};
 
     auto results =
-        amaiss::dot_product_vectors_dense<uint16_t>(&vectors, dense.data());
+        amaiss::dot_product_uint16_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 100*10 + 200*20 = 1000 + 4000 = 5000
@@ -298,7 +298,7 @@ TEST(DotProductDenseTemplate, skips_zero_dense_values) {
     std::vector<uint8_t> dense = {10, 0, 30, 0};
 
     auto results =
-        amaiss::dot_product_vectors_dense<uint8_t>(&vectors, dense.data());
+        amaiss::dot_product_uint8_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 1*10 + 2*0 + 3*30 = 10 + 0 + 90 = 100
