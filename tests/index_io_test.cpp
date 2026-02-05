@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "amaiss/brutal_index.h"
+#include "amaiss/id_map_index.h"
 #include "amaiss/index.h"
 #include "amaiss/io/buffered_io.h"
 #include "amaiss/io/io.h"
@@ -245,4 +246,50 @@ TEST(IndexIO, MultipleWriteReadCycles) {
         delete index;
         delete loaded;
     }
+}
+
+// Test roundtrip with IDMapIndex wrapping SeismicIndex
+TEST(IndexIO, RoundtripIDMapIndex) {
+    auto* seismic = new amaiss::SeismicIndex(128);
+    auto* original = new amaiss::IDMapIndex(seismic);
+
+    amaiss::BufferedIOWriter writer;
+    amaiss::write_index(original, &writer);
+
+    amaiss::BufferedIOReader reader(writer.data());
+    amaiss::Index* loaded = amaiss::read_index(&reader);
+
+    ASSERT_NE(loaded, nullptr);
+    ASSERT_EQ(loaded->id(), original->id());
+    ASSERT_EQ(loaded->num_vectors(), 0);
+
+    delete original;
+    delete loaded;
+}
+
+// Test roundtrip with IDMapIndex with data
+TEST(IndexIO, RoundtripIDMapIndexWithData) {
+    auto* seismic = new amaiss::SeismicIndex(128);
+    auto* original = new amaiss::IDMapIndex(seismic);
+
+    // Add some vectors with custom IDs
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
+    std::vector<amaiss::term_t> indices = {0, 1, 2, 3};
+    std::vector<float> values = {1.0F, 0.5F, 0.8F, 0.3F};
+    std::vector<amaiss::idx_t> ids = {100, 200};
+    original->add_with_ids(2, indptr.data(), indices.data(), values.data(),
+                           ids.data());
+
+    amaiss::BufferedIOWriter writer;
+    amaiss::write_index(original, &writer);
+
+    amaiss::BufferedIOReader reader(writer.data());
+    amaiss::Index* loaded = amaiss::read_index(&reader);
+
+    ASSERT_NE(loaded, nullptr);
+    ASSERT_EQ(loaded->id(), original->id());
+    ASSERT_EQ(loaded->num_vectors(), 2);
+
+    delete original;
+    delete loaded;
 }

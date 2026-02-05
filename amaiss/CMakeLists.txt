@@ -5,6 +5,7 @@ set(AMAISS_SRC
     seismic_scalar_quantized_index.cpp
     sparse_vectors.cpp
     index_factory.cpp
+    id_map_index.cpp
     cluster/random_kmeans.cpp
     cluster/kmeans_utils.cpp
     cluster/inverted_list_clusters.cpp
@@ -22,10 +23,13 @@ set(AMAISS_HEADERS
     seismic_index.h
     seismic_scalar_quantized_index.h
     index_factory.h
+    id_map_index.h
     utils/checks.h
     utils/distance.h
     utils/distance_avx512.h
     utils/distance_avx2.h
+    utils/distance_neon.h
+    utils/distance_sve.h
     utils/distance_simd.h
     utils/ranker.h
     cluster/random_kmeans.h
@@ -144,16 +148,16 @@ endif()
 
 find_package(OpenMP REQUIRED)
 # Link base library (always)
-target_link_libraries(amaiss PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set)
+target_link_libraries(amaiss PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set absl::flat_hash_map)
 
 # Link x86 SIMD targets (only if they're real targets)
 if(AMAISS_IS_X86)
-  target_link_libraries(amaiss_avx2 PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set)
-  target_link_libraries(amaiss_avx512 PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set)
-  target_link_libraries(amaiss_avx512_spr PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set)
+  target_link_libraries(amaiss_avx2 PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set absl::flat_hash_map)
+  target_link_libraries(amaiss_avx512 PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set absl::flat_hash_map)
+  target_link_libraries(amaiss_avx512_spr PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set absl::flat_hash_map)
 endif()
 
 # Link SVE target (only if it exists as a real target)
 if(AMAISS_IS_ARM AND NOT APPLE)
-  target_link_libraries(amaiss_sve PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set)
+  target_link_libraries(amaiss_sve PRIVATE OpenMP::OpenMP_CXX absl::flat_hash_set absl::flat_hash_map)
 endif()

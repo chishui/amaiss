@@ -28,7 +28,13 @@ public:
     virtual const SparseVectors* get_vectors() const = 0;
 
     int get_dimension() const { return dimension_; }
-
+    size_t num_vectors() const {
+        const auto* vectors = get_vectors();
+        return vectors == nullptr ? 0 : vectors->num_vectors();
+    }
+    virtual void add_with_ids(idx_t n, const idx_t* indptr,
+                              const term_t* indices, const float* values,
+                              const idx_t* ids);
 protected:
     virtual auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                         const float* values, int k,

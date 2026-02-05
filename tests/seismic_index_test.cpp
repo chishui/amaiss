@@ -310,9 +310,9 @@ TEST(SeismicIndexSearch, search_with_no_matching_term) {
                 query_values.data(), 1, labels.data(), &params);
 
     // No docs have term 3, so inverted list for term 3 is empty
-    // TopKHolder::top_k_descending() pads with default-constructed idx_t (0)
+    // TopKHolder::top_k_descending_with_padding() pads with -1
     // when fewer than k results are found
-    EXPECT_EQ(labels[0], 0);
+    EXPECT_EQ(labels[0], -1);
 }
 
 TEST(SeismicIndexSearch, search_returns_results_sorted_by_score) {
@@ -388,11 +388,11 @@ TEST(SeismicIndexSearch, lambda_prunes_posting_list) {
     idx->search(1, query_indptr.data(), query_indices.data(),
                 query_values.data(), 4, labels.data(), &params);
 
-    // Only 2 docs in posting list, so only 2 results, rest padded with 0
-    EXPECT_EQ(labels[0], 3);  // doc3 (score 0.4)
-    EXPECT_EQ(labels[1], 2);  // doc2 (score 0.3)
-    EXPECT_EQ(labels[2], 0);  // padded
-    EXPECT_EQ(labels[3], 0);  // padded
+    // Only 2 docs in posting list, so only 2 results, rest padded with -1
+    EXPECT_EQ(labels[0], 3);   // doc3 (score 0.4)
+    EXPECT_EQ(labels[1], 2);   // doc2 (score 0.3)
+    EXPECT_EQ(labels[2], -1);  // padded
+    EXPECT_EQ(labels[3], -1);  // padded
 }
 
 TEST(SeismicIndexSearch, cut_prunes_query_tokens) {

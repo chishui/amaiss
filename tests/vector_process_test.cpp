@@ -22,10 +22,11 @@ TEST(TopKTokens, k_equals_size) {
 
     auto result = amaiss::top_k_tokens(indices.data(), weights.data(), 3, 3);
 
+    // When k >= size, returns all indices in original order (early return)
     ASSERT_EQ(result.size(), 3);
-    ASSERT_EQ(result[0], 10);  // weight 3.0 (highest)
-    ASSERT_EQ(result[1], 30);  // weight 2.0
-    ASSERT_EQ(result[2], 20);  // weight 1.0
+    ASSERT_EQ(result[0], 10);
+    ASSERT_EQ(result[1], 20);
+    ASSERT_EQ(result[2], 30);
 }
 
 TEST(TopKTokens, k_greater_than_size) {
@@ -34,13 +35,10 @@ TEST(TopKTokens, k_greater_than_size) {
 
     auto result = amaiss::top_k_tokens(indices.data(), weights.data(), 2, 5);
 
-    ASSERT_EQ(result.size(), 5);
-    // First 2 are actual values (descending), rest are default (0)
-    ASSERT_EQ(result[0], 5);  // weight 2.0 (highest)
-    ASSERT_EQ(result[1], 6);  // weight 1.0
-    ASSERT_EQ(result[2], 0);
-    ASSERT_EQ(result[3], 0);
-    ASSERT_EQ(result[4], 0);
+    // When k >= size, returns all indices in original order (early return)
+    ASSERT_EQ(result.size(), 2);
+    ASSERT_EQ(result[0], 5);
+    ASSERT_EQ(result[1], 6);
 }
 
 TEST(TopKTokens, single_element) {

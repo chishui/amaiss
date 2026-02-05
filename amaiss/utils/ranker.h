@@ -74,16 +74,20 @@ public:
      *  padding with default-constructed T if pq has fewer than k items.
      */
     std::vector<T> top_k_descending() {
-        if (k <= 0) return {};
-        std::vector<T> ret(size());
-        int idx = 0;
+        size_t size = pq.size();
+        if (k <= 0 || size <= 0) return {};
+        std::vector<T> ret(size);
+        int idx = size - 1;
         while (!pq.empty() && idx < k) {
-            ret[idx] = pq.top().second;
+            ret[idx--] = pq.top().second;
             pq.pop();
-            ++idx;
         }
-        std::ranges::reverse(ret);
-        ret.resize(k);
+        return ret;
+    }
+
+    std::vector<T> top_k_descending_with_padding(T pad_with) {
+        std::vector<T> ret = top_k_descending();
+        ret.resize(k, pad_with);
         return ret;
     }
 
@@ -181,16 +185,20 @@ public:
      *  padding with default-constructed T if pq has fewer than k items.
      */
     std::vector<T> top_k_descending() {
-        if (k <= 0) return {};
-        std::vector<T> ret(size());
-        int idx = 0;
+        size_t size = pq.size();
+        if (k <= 0 || size <= 0) return {};
+        std::vector<T> ret(size);
+        int idx = size - 1;
         while (!pq.empty() && idx < k) {
-            ret[idx] = pq.top().second.second;
+            ret[idx--] = pq.top().second.second;
             pq.pop();
-            ++idx;
         }
-        std::ranges::reverse(ret);
-        ret.resize(k);
+        return ret;
+    }
+
+    std::vector<T> top_k_descending_with_padding(T pad_with) {
+        std::vector<T> ret = top_k_descending();
+        ret.resize(k, pad_with);
         return ret;
     }
 

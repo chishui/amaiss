@@ -39,6 +39,12 @@ void throw_if_any_null(Args*... ptrs) {
     throw std::runtime_error(msg);
 }
 
+template <typename T, typename U>
+[[noreturn]] void throw_if_not_equal(T&& t, U&& u,
+                                     const char* msg = "values must be equal") {
+    if (t != u) {
+        throw std::invalid_argument(msg);
+    }
+}
 }  // namespace amaiss
-
 #endif  // COMMON_H

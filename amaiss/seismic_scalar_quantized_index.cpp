@@ -255,7 +255,7 @@ auto SeismicScalarQuantizedIndex::single_query(
         first_list = false;
     }
 
-    return holder.top_k_descending();
+    return holder.top_k_descending_with_padding(INVALID_IDX);
 }
 
 void SeismicScalarQuantizedIndex::write_index(IOWriter* io_writer) {

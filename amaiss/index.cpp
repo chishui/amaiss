@@ -30,7 +30,12 @@ auto Index::search(idx_t n, const idx_t* indptr, const term_t* indices,
                    const float* values, int k,
                    const SearchParameters* search_parameters)
     -> std::vector<std::vector<idx_t>> {
-    throw_not_implemented();
+    throw_not_implemented("search not implementted in Index");
+}
+
+void Index::add_with_ids(idx_t n, const idx_t* indptr, const term_t* indices,
+                         const float* values, const idx_t* ids) {
+    throw_not_implemented("add_with_ids not implemented in Index");
 }
 
 }  // namespace amaiss

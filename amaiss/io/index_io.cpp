@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "amaiss/brutal_index.h"
+#include "amaiss/id_map_index.h"
 #include "amaiss/io/file_io.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
@@ -13,6 +14,7 @@ namespace {
 constexpr uint32_t BRUT = fourcc(BrutalIndex::name);
 constexpr uint32_t SEIS = fourcc(SeismicIndex::name);
 constexpr uint32_t SESQ = fourcc(SeismicScalarQuantizedIndex::name);
+constexpr uint32_t IDMP = fourcc(IDMapIndex::name);
 
 void write_header(Index* index, IOWriter* io_writer) {
     // write index type
@@ -35,6 +37,8 @@ Index* read_header(IOReader* io_reader) {
             return new SeismicIndex(dimension);
         case SESQ:
             return new SeismicScalarQuantizedIndex(dimension);
+        case IDMP:
+            return new IDMapIndex();
         default:
             throw std::runtime_error("Unknown index type");
     }

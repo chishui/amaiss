@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "amaiss/brutal_index.h"
+#include "amaiss/id_map_index.h"
 #include "amaiss/index.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
@@ -104,6 +105,24 @@ Index* index_factory(int dimension, const char* description) {
         float alpha = std::stof(get_param("alpha", "0.5"));
         return new SeismicScalarQuantizedIndex(quantizer_type, vmin, vmax,
                                                lambda, beta, alpha, dimension);
+    }
+
+    if (index_type == "idmap") {
+        // For idmap, the delegate index description follows after the first
+        // comma Example: "idmap,seismic_sq,quantizer=8bit|lambda=10"
+        if (segments.size() < 2) {
+            throw std::invalid_argument("idmap requires a delegate index type");
+        }
+        // Reconstruct the delegate description from remaining segments
+        std::string delegate_desc;
+        for (size_t i = 1; i < segments.size(); ++i) {
+            if (i > 1) {
+                delegate_desc += ",";
+            }
+            delegate_desc += segments[i];
+        }
+        Index* delegate_index = index_factory(dimension, delegate_desc.c_str());
+        return new IDMapIndex(delegate_index);
     }
 
     throw std::invalid_argument("Unknown index type: " + index_type);

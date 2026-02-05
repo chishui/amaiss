@@ -8,7 +8,7 @@
 
 ```bash
 sudo apt update
-sudo apt install -y g++ cmake libomp-dev python3.12-dev python3-pip swig
+sudo apt install -y g++ cmake libomp-dev python3.12-dev python3-pip swig libabsl-dev
 ```
 
 > Note: Replace `python3.12-dev` with your Python version (e.g., `python3.11-dev` for Python 3.11).

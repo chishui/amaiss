@@ -81,10 +81,21 @@ TEST(TopKHolder, top_k_descending) {
     holder.add(1.0F, 10);
 
     auto result = holder.top_k_descending();
-    ASSERT_EQ(result.size(), 3);
-    ASSERT_EQ(result[0], 50);  // highest score first
+    ASSERT_EQ(result.size(), 2);  // no padding, returns actual size
+    ASSERT_EQ(result[0], 50);     // highest score first
     ASSERT_EQ(result[1], 10);
-    ASSERT_EQ(result[2], 0);
+}
+
+TEST(TopKHolder, top_k_descending_with_padding) {
+    amaiss::TopKHolder<int> holder(3);
+    holder.add(5.0F, 50);
+    holder.add(1.0F, 10);
+
+    auto result = holder.top_k_descending_with_padding(-1);
+    ASSERT_EQ(result.size(), 3);  // padded to k
+    ASSERT_EQ(result[0], 50);     // highest score first
+    ASSERT_EQ(result[1], 10);
+    ASSERT_EQ(result[2], -1);  // padded value
 }
 
 // DedupeTopKHolder tests
@@ -166,12 +177,23 @@ TEST(DedupeTopKHolder, top_k_descending) {
     amaiss::DedupeTopKHolder<int> holder(3);
     holder.add(5.0F, 1, 50);
     holder.add(1.0F, 2, 10);
-    holder.add(3.0F, 3, 30);
 
     auto result = holder.top_k_descending();
-    ASSERT_EQ(result.size(), 3);
+    ASSERT_EQ(result.size(), 2);  // no padding, returns actual size
     // descending order (highest first)
     ASSERT_EQ(result[0], 50);
-    ASSERT_EQ(result[1], 30);
-    ASSERT_EQ(result[2], 10);
+    ASSERT_EQ(result[1], 10);
+}
+
+TEST(DedupeTopKHolder, top_k_descending_with_padding) {
+    amaiss::DedupeTopKHolder<int> holder(3);
+    holder.add(5.0F, 1, 50);
+    holder.add(1.0F, 2, 10);
+
+    auto result = holder.top_k_descending_with_padding(-1);
+    ASSERT_EQ(result.size(), 3);  // padded to k
+    // descending order (highest first)
+    ASSERT_EQ(result[0], 50);
+    ASSERT_EQ(result[1], 10);
+    ASSERT_EQ(result[2], -1);  // padded value
 }

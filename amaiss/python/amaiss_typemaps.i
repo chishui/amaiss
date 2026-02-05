@@ -29,6 +29,22 @@
     PyBuffer_Release(&view$argnum);
 }
 
+%typemap(in) (const amaiss::idx_t* ids) (Py_buffer view) {
+    if (PyObject_GetBuffer($input, &view, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS) == -1) {
+        SWIG_fail;
+    }
+    if (strcmp(view.format, "i") != 0) {
+        PyBuffer_Release(&view);
+        PyErr_SetString(PyExc_TypeError, "Expected int32 array for ids");
+        SWIG_fail;
+    }
+    $1 = (amaiss::idx_t*)view.buf;
+}
+
+%typemap(freearg) (const amaiss::idx_t* ids) {
+    PyBuffer_Release(&view$argnum);
+}
+
 %typemap(in) (const amaiss::term_t* indices) (Py_buffer view) {
     if (PyObject_GetBuffer($input, &view, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS) == -1) {
         SWIG_fail;

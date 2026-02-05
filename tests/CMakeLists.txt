@@ -3,6 +3,7 @@
 
 set(AMAISS_TEST_SRC
     distance_test.cpp
+    id_map_index_test.cpp
     index_factory_test.cpp
     index_io_test.cpp
     inverted_list_clusters_test.cpp

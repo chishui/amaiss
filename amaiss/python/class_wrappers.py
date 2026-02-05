@@ -47,6 +47,32 @@ def handle_Index(the_class):
 
     the_class.search = replacement_search
 
+    original_add_with_ids = the_class.add_with_ids
+
+    def replacement_add_with_ids(self, n, indptr, indices, values, ids):
+        """Add vectors with custom IDs.
+
+        Parameters
+        ----------
+        n : int
+            Number of vectors to add
+        indptr : array_like
+            CSR indptr array (int32)
+        indices : array_like
+            CSR indices array (uint16)
+        values : array_like
+            CSR values array (float32)
+        ids : array_like
+            Custom IDs for the vectors (int32)
+        """
+        indptr = np.ascontiguousarray(indptr, dtype=np.int32)
+        indices = np.ascontiguousarray(indices, dtype=np.uint16)
+        values = np.ascontiguousarray(values, dtype=np.float32)
+        ids = np.ascontiguousarray(ids, dtype=np.int32)
+        return original_add_with_ids(self, n, indptr, indices, values, ids)
+
+    the_class.add_with_ids = replacement_add_with_ids
+
 
 def handle_all_classes(module):
     """Apply wrappers to all relevant classes in the module."""

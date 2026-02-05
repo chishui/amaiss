@@ -12,6 +12,7 @@
 #include "amaiss/brutal_index.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
+#include "amaiss/id_map_index.h"
 #include "amaiss/utils/scalar_quantizer.h"
 #include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/index_factory.h"
@@ -23,6 +24,7 @@ import_array();
 %}
 
 %include "amaiss_typemaps.i"
+%include "factory.i"
 %include "amaiss/io/io.h"
 %include "amaiss/types.h"
 %include "amaiss/sparse_vectors.h"
@@ -35,6 +37,8 @@ import_array();
 %ignore amaiss::SeismicIndex::read_index;
 %ignore amaiss::SeismicScalarQuantizedIndex::write_index;
 %ignore amaiss::SeismicScalarQuantizedIndex::read_index;
+%ignore amaiss::IDMapIndex::write_index;
+%ignore amaiss::IDMapIndex::read_index;
 %ignore amaiss::SparseVectors::serialize;
 %ignore amaiss::SparseVectors::deserialize;
 %ignore amaiss::InvertedListClusters::serialize;
@@ -76,12 +80,16 @@ import_array();
 %include "amaiss/brutal_index.h"
 %include "amaiss/seismic_index.h"
 %include "amaiss/seismic_scalar_quantized_index.h"
+%include "amaiss/id_map_index.h"
 %include "amaiss/cluster/random_kmeans.h"
 
 // index_factory returns a new object - Python takes ownership
+// Use %factory to enable proper downcasting based on runtime type
 %newobject amaiss::index_factory;
+%factory(amaiss::Index* amaiss::index_factory, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex);
 %include "amaiss/index_factory.h"
 
 // read_index returns a new object - Python takes ownership
 %newobject amaiss::read_index;
+%factory(amaiss::Index* amaiss::read_index, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex);
 %include "amaiss/io/index_io.h"

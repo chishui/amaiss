@@ -98,41 +98,21 @@ if(NOT WIN32)
   set_target_properties(swigamaiss_sve PROPERTIES SUFFIX .so)
 endif()
 
-target_include_directories(swigamaiss PRIVATE
-    ${PROJECT_SOURCE_DIR}
-    ${NUMPY_INCLUDE_DIR}
-    ${Python_INCLUDE_DIRS}
-)
-
-target_link_libraries(swigamaiss PRIVATE
-  amaiss
-  Python::Module
-  Python::NumPy
-)
-
-target_link_libraries(swigamaiss_avx2 PRIVATE
-  amaiss_avx2
-  Python::Module
-  Python::NumPy
-)
-
-target_link_libraries(swigamaiss_avx512 PRIVATE
-  amaiss_avx512
-  Python::Module
-  Python::NumPy
-)
-
-target_link_libraries(swigamaiss_avx512_spr PRIVATE
-  amaiss_avx512_spr
-  Python::Module
-  Python::NumPy
-)
-
-target_link_libraries(swigamaiss_sve PRIVATE
-  amaiss_sve
-  Python::Module
-  Python::NumPy
-)
+foreach(_target swigamaiss swigamaiss_avx2 swigamaiss_avx512 swigamaiss_avx512_spr swigamaiss_sve)
+  target_include_directories(${_target} PRIVATE
+      ${PROJECT_SOURCE_DIR}
+      ${NUMPY_INCLUDE_DIR}
+      ${Python_INCLUDE_DIRS}
+  )
+  string(REGEX REPLACE "^swig" "" _lib_name ${_target})
+  target_link_libraries(${_target} PRIVATE
+    ${_lib_name}
+    Python::Module
+    Python::NumPy
+    absl::flat_hash_map
+    absl::flat_hash_set
+  )
+endforeach()
 
 # Set output properties
 set_target_properties(swigamaiss PROPERTIES

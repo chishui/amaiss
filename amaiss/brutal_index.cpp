@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
+#include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 #include "amaiss/utils/distance.h"
-#include "amaiss/utils/print.h"
 #include "amaiss/utils/ranker.h"
 
 namespace amaiss {
@@ -78,7 +78,7 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
                                               len, dense.data());
         holder.add(score, i);
     }
-    return holder.top_k_descending();
+    return holder.top_k_descending_with_padding(INVALID_IDX);
 }
 
 const SparseVectors* BrutalIndex::get_vectors() const { return vectors_.get(); }

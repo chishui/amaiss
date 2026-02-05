@@ -202,7 +202,7 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
         first_list = false;
     }
 
-    return holder.top_k_descending();
+    return holder.top_k_descending_with_padding(INVALID_IDX);
 }
 
 const SparseVectors* SeismicIndex::get_vectors() const {
