@@ -3,9 +3,7 @@
 
 #include <vector>
 
-#include "amaiss/cluster/inverted_list_clusters.h"
-#include "amaiss/index.h"
-#include "amaiss/invlists/inverted_lists.h"
+#include "amaiss/sparse_vectors.h"
 
 namespace amaiss {
 
@@ -40,7 +38,7 @@ public:
     RandomKMeans();
 
     static std::vector<std::vector<idx_t>> train(
-        const Index* index, const std::vector<idx_t>& doc_ids,
+        const SparseVectors* vectors, const std::vector<idx_t>& doc_ids,
         size_t n_clusters);
 };
 

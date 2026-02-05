@@ -10,6 +10,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
+#include "amaiss/utils/checks.h"
+
 namespace amaiss {
 
 template <typename T, typename Comparator = std::greater<float>>
@@ -28,6 +31,7 @@ class TopKHolder {
 
 public:
     TopKHolder(int k) : k(k) {
+        throw_if_not_positive(k);
         std::vector<P> vec;
         vec.reserve(k);
         pq = std::priority_queue<P, std::vector<P>, CompareP>(CompareP(),
@@ -71,13 +75,15 @@ public:
      */
     std::vector<T> top_k_descending() {
         if (k <= 0) return {};
-        std::vector<T> ret(k);
+        std::vector<T> ret(size());
         int idx = 0;
         while (!pq.empty() && idx < k) {
             ret[idx] = pq.top().second;
             pq.pop();
             ++idx;
         }
+        std::ranges::reverse(ret);
+        ret.resize(k);
         return ret;
     }
 
@@ -104,7 +110,7 @@ private:
     };
 
     std::priority_queue<P, std::vector<P>, CompareP> pq;
-    std::unordered_set<ID_T> dedupe;
+    absl::flat_hash_set<ID_T> dedupe;
 
 public:
     DedupeTopKHolder(int k) : k(k) {
@@ -176,12 +182,15 @@ public:
      */
     std::vector<T> top_k_descending() {
         if (k <= 0) return {};
-        std::vector<T> ret(k);
-        size_t idx = pq.size();
-        while (!pq.empty()) {
-            ret[--idx] = pq.top().second.second;
+        std::vector<T> ret(size());
+        int idx = 0;
+        while (!pq.empty() && idx < k) {
+            ret[idx] = pq.top().second.second;
             pq.pop();
+            ++idx;
         }
+        std::ranges::reverse(ret);
+        ret.resize(k);
         return ret;
     }
 

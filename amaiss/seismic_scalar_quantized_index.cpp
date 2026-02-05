@@ -3,7 +3,6 @@
 #include <sys/types.h>
 
 #include <cstdint>
-#include <iostream>
 #include <memory>
 #include <typeinfo>
 #include <vector>
@@ -17,11 +16,7 @@
 #include "amaiss/io/seismic_invlists_writer.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
-#if defined(__AVX512F__)
-#include "amaiss/utils/distance_avx512.h"
-#else
-#include "amaiss/utils/distance.h"
-#endif
+#include "amaiss/utils/distance_simd.h"
 #include "amaiss/utils/prefetch.h"
 #include "amaiss/utils/scalar_quantizer.h"
 #include "amaiss/utils/vector_process.h"
@@ -41,21 +36,13 @@ static void query_single_inverted_list(
     const auto& summaries = cluster_invlist.summaries();
     // compute dp with all summaries
     std::vector<float> summary_scores;
-#if defined(__AVX512F__)
     if (element_size == U16) {
-        summary_scores = dot_product_uint16_dense(
+        summary_scores = dot_product_uint16_vectors_dense(
             &summaries, reinterpret_cast<const uint16_t*>(dense.data()));
     } else {
-        summary_scores = dot_product_uint8_dense(&summaries, dense.data());
+        summary_scores =
+            dot_product_uint8_vectors_dense(&summaries, dense.data());
     }
-#else
-    if (element_size == U16) {
-        summary_scores = dot_product_dense<uint16_t>(
-            &summaries, reinterpret_cast<const uint16_t*>(dense.data()));
-    } else {
-        summary_scores = dot_product_dense<uint8_t>(&summaries, dense.data());
-    }
-#endif
     size_t num_vectors = vectors->num_vectors();
 
     std::vector<size_t> cluster_order(summary_scores.size());
@@ -170,34 +157,21 @@ std::vector<uint8_t> SeismicScalarQuantizedIndex::encode(
 }
 
 void SeismicScalarQuantizedIndex::build() {
-    ArrayInvertedLists inverted_lists(get_dimension(), sq_.bytes_per_value());
-    size_t n_docs = vectors_->num_vectors();
-    const auto& indptr_data = vectors_->indptr_data();
-    const auto& indices_data = vectors_->indices_data();
-    const auto& values_data = vectors_->values_data();
-
-    // inverted_lists.add_entry is thread safe
-    const size_t element_size = vectors_->get_element_size();
-#pragma omp parallel for schedule(dynamic, 64)
-    for (size_t i = 0; i < n_docs; ++i) {
-        int start = indptr_data[i];
-        int n_tokens = indptr_data[i + 1] - indptr_data[i];
-        for (size_t j = start; j < start + n_tokens; ++j) {
-            term_t term_id = indices_data[j];
-            inverted_lists.add_entry(
-                term_id, i, values_data + j * vectors_->get_element_size());
-        }
-    }
+    // build inverted index
+    std::unique_ptr<ArrayInvertedLists> inverted_lists =
+        ArrayInvertedLists::build_inverted_lists(
+            get_dimension(), sq_.bytes_per_value(), vectors_.get());
 
     // TODO: generate lambda and beta
+    size_t num_inverted_lists = inverted_lists->size();
     clustered_inverted_lists.clear();
-    clustered_inverted_lists.resize(inverted_lists.size());
+    clustered_inverted_lists.resize(num_inverted_lists);
 #pragma omp parallel for schedule(dynamic, 64)
-    for (size_t idx = 0; idx < inverted_lists.size(); ++idx) {
-        auto& invlist = inverted_lists[idx];
+    for (size_t idx = 0; idx < num_inverted_lists; ++idx) {
+        auto& invlist = (*inverted_lists)[idx];
         const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
         InvertedListClusters inverted_list_clusters(
-            RandomKMeans::train(this, doc_ids, beta_));
+            RandomKMeans::train(vectors_.get(), doc_ids, beta_));
         inverted_list_clusters.summarize(vectors_.get(), alpha_);
         clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
         invlist.clear();

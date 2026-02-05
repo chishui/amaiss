@@ -65,6 +65,8 @@ private:
     int lambda_;
     int beta_;
     float alpha_;
+
+protected:
     std::vector<InvertedListClusters> clustered_inverted_lists;
 };
 }  // namespace amaiss

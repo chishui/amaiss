@@ -8,12 +8,14 @@ class IOReader {
 public:
     virtual ~IOReader() = default;
     virtual size_t read(void* ptr, size_t size, size_t nitems) = 0;
+    virtual void close() {}
 };
 
 class IOWriter {
 public:
     virtual ~IOWriter() = default;
     virtual void write(void* ptr, size_t size, size_t nitems) = 0;
+    virtual void close() {}
 };
 
 class Serializable {

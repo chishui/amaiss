@@ -23,3 +23,12 @@ add_subdirectory(amaiss)
 if(AMAISS_ENABLE_PYTHON)
     add_subdirectory(amaiss/python)
 endif()
+
+# CTest must be included in the top level to enable `make test` target.
+include(CTest)
+
+# Unit tests
+option(AMAISS_ENABLE_TESTS "Build unit tests" OFF)
+if(AMAISS_ENABLE_TESTS)
+    add_subdirectory(tests)
+endif()

@@ -2,6 +2,7 @@
 #define INVERTED_LIST_H
 
 #include <atomic>
+#include <memory>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
@@ -68,6 +69,9 @@ public:
     size_t size() const { return lists_.size(); };
     const InvertedList& operator[](size_t i) const { return lists_[i]; };
     InvertedList& operator[](size_t i) { return lists_[i]; };
+
+    static std::unique_ptr<ArrayInvertedLists> build_inverted_lists(
+        size_t n_term, size_t element_size, const SparseVectors* vectors);
 
 private:
     std::vector<InvertedList> lists_;

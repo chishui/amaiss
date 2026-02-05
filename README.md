@@ -33,8 +33,24 @@ This will:
 
 ### Run Tests
 
+First, build with tests enabled:
+
+```bash
+cmake -S . -B build -DAMAISS_ENABLE_TESTS=ON
+cmake --build build
+```
+
+Then run the tests:
+
 ```bash
 make test
+```
+
+To run specific test suites:
+
+```bash
+./build/tests/amaiss_test --gtest_filter="SparseVectors*"
+./build/tests/amaiss_test --gtest_filter="IndexFactory*"
 ```
 
 ### Python Environment Setup

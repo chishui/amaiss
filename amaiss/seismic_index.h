@@ -40,6 +40,9 @@ public:
     void add(idx_t n, const idx_t* indptr, const term_t* indices,
              const float* values) override;
 
+protected:
+    std::vector<InvertedListClusters> clustered_inverted_lists;
+
 private:
     // override of IndexIO
     void write_index(IOWriter* io_writer) override;
@@ -58,7 +61,6 @@ private:
     int lambda_;
     int beta_;
     float alpha_;
-    std::vector<InvertedListClusters> clustered_inverted_lists;
 };
 }  // namespace amaiss
 

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -122,6 +123,30 @@ void ArrayInvertedLists::add_entries(term_t term_id, size_t n_entry,
     }
     auto& inverted_list = lists_[term_id];
     inverted_list.add_entries(n_entry, doc_ids, code);
+}
+
+std::unique_ptr<ArrayInvertedLists> ArrayInvertedLists::build_inverted_lists(
+    size_t n_term, size_t element_size, const SparseVectors* vectors) {
+    std::unique_ptr<ArrayInvertedLists> inverted_lists =
+        std::make_unique<ArrayInvertedLists>(n_term, element_size);
+    size_t n_docs = vectors->num_vectors();
+
+    const auto& indptr_data = vectors->indptr_data();
+    const auto& indices_data = vectors->indices_data();
+    const auto& values_data = vectors->values_data();
+
+    // inverted_lists.add_entry is thread safe
+#pragma omp parallel for schedule(dynamic, 64)
+    for (size_t i = 0; i < n_docs; ++i) {
+        int start = indptr_data[i];
+        int n_tokens = indptr_data[i + 1] - indptr_data[i];
+        for (size_t j = start; j < start + n_tokens; ++j) {
+            term_t term_id = indices_data[j];
+            inverted_lists->add_entry(term_id, i,
+                                      values_data + j * element_size);
+        }
+    }
+    return inverted_lists;
 }
 
 }  // namespace amaiss

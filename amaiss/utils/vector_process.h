@@ -15,9 +15,7 @@ inline std::vector<term_t> top_k_tokens(const term_t* indices, const T* weights,
     for (int i = 0; i < size; ++i) {
         holder.add(weights[i], indices[i]);
     }
-    auto top_k = holder.top_k();
-    std::ranges::reverse(top_k);
-    return top_k;
+    return holder.top_k_descending();
 }
 
 }  // namespace amaiss

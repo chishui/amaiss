@@ -26,6 +26,7 @@ set(AMAISS_HEADERS
     utils/distance.h
     utils/distance_avx512.h
     utils/distance_avx2.h
+    utils/distance_simd.h
     utils/ranker.h
     cluster/random_kmeans.h
     cluster/inverted_list_clusters.h

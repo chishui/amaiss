@@ -13,7 +13,7 @@ public:
     ~FileIOReader();
 
     size_t read(void* ptr, size_t size, size_t nitems) override;
-    void close();
+    void close() override;
 
 private:
     FILE* file_;
@@ -26,7 +26,8 @@ public:
     ~FileIOWriter();
 
     void write(void* ptr, size_t size, size_t nitems) override;
-    void close();  // Call explicitly if you need error handling on close
+    void close()
+        override;  // Call explicitly if you need error handling on close
 
 private:
     FILE* file_;

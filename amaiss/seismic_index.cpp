@@ -7,6 +7,7 @@
 #include <numeric>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/index.h"
@@ -15,22 +16,22 @@
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
-#if defined(__AVX512F__)
-#include "amaiss/utils/distance_avx512.h"
-#else
-#include "amaiss/utils/distance.h"
-#endif
-#include "absl/container/flat_hash_set.h"
+#include "amaiss/utils/distance_simd.h"
 #include "amaiss/utils/prefetch.h"
 #include "amaiss/utils/ranker.h"
 #include "amaiss/utils/vector_process.h"
 
 namespace amaiss {
+namespace {
 
-static void query_single_inverted_list(
-    const SparseVectors* vectors, const InvertedListClusters& cluster_invlist,
-    const std::vector<float>& dense, TopKHolder<idx_t>& heap,
-    absl::flat_hash_set<idx_t>& visited, float heap_factor, bool first_list) {
+constexpr int kElementSize = U32;
+
+void query_single_inverted_list(const SparseVectors* vectors,
+                                const InvertedListClusters& cluster_invlist,
+                                const std::vector<float>& dense,
+                                TopKHolder<idx_t>& heap,
+                                absl::flat_hash_set<idx_t>& visited,
+                                float heap_factor, bool first_list) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
     if (csize == 0) {
@@ -38,7 +39,8 @@ static void query_single_inverted_list(
     }
     const auto& summaries = cluster_invlist.summaries();
     // compute dp with all summaries
-    auto summary_scores = dot_product_float_dense(&summaries, dense);
+    auto summary_scores =
+        dot_product_float_vectors_dense(&summaries, dense.data());
     size_t num_vectors = vectors->num_vectors();
 
     std::vector<size_t> cluster_order(summary_scores.size());
@@ -82,6 +84,7 @@ static void query_single_inverted_list(
         }
     }
 }
+}  // namespace
 
 SeismicIndex::SeismicIndex(int dim)
     : Index(dim), lambda_(0), beta_(0), alpha_(0.4F) {}
@@ -95,47 +98,31 @@ void SeismicIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
 
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
-    constexpr int element_size = U32;
     if (vectors_ == nullptr) {
         vectors_ = std::unique_ptr<SparseVectors>(
-            new SparseVectors({.element_size = element_size,
+            new SparseVectors({.element_size = kElementSize,
                                .dimension = static_cast<size_t>(dimension_)}));
     }
     vectors_->add_vectors(indptr, indptr_size, indices, nnz,
                           reinterpret_cast<const uint8_t*>(values),
-                          nnz * element_size);
+                          nnz * kElementSize);
 }
 
 void SeismicIndex::build() {
-    ArrayInvertedLists inverted_lists(get_dimension(), ElementSize::U32);
-    size_t n_docs = vectors_->num_vectors();
-
-    const auto& indptr_data = vectors_->indptr_data();
-    const auto& indices_data = vectors_->indices_data();
-    const auto& values_data = vectors_->values_data_float();
-
-    const size_t element_size = vectors_->get_element_size();
-    // inverted_lists.add_entry is thread safe
-#pragma omp parallel for schedule(dynamic, 64)
-    for (size_t i = 0; i < n_docs; ++i) {
-        int start = indptr_data[i];
-        int n_tokens = indptr_data[i + 1] - indptr_data[i];
-        for (size_t j = start; j < start + n_tokens; ++j) {
-            term_t term_id = indices_data[j];
-            inverted_lists.add_entry(
-                term_id, i, reinterpret_cast<const uint8_t*>(&values_data[j]));
-        }
-    }
-
+    // build inverted index
+    std::unique_ptr<ArrayInvertedLists> inverted_lists =
+        ArrayInvertedLists::build_inverted_lists(get_dimension(), kElementSize,
+                                                 vectors_.get());
     // TODO: generate lambda and beta
+    size_t inverted_lists_size = inverted_lists->size();
     clustered_inverted_lists.clear();
-    clustered_inverted_lists.resize(inverted_lists.size());
+    clustered_inverted_lists.resize(inverted_lists_size);
 #pragma omp parallel for schedule(dynamic, 64)
-    for (size_t idx = 0; idx < inverted_lists.size(); ++idx) {
-        auto& invlist = inverted_lists[idx];
+    for (size_t idx = 0; idx < inverted_lists_size; ++idx) {
+        auto& invlist = (*inverted_lists)[idx];
         const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
         InvertedListClusters inverted_list_clusters(
-            RandomKMeans::train(this, doc_ids, beta_));
+            RandomKMeans::train(vectors_.get(), doc_ids, beta_));
         inverted_list_clusters.summarize(vectors_.get(), alpha_);
         clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
         invlist.clear();
@@ -152,17 +139,18 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
     // Create query vectors from input
-    SparseVectors query_vectors({.element_size = ElementSize::U32,
+    SparseVectors query_vectors({.element_size = kElementSize,
                                  .dimension = static_cast<size_t>(dimension_)});
     query_vectors.add_vectors(indptr, indptr_size, indices, nnz,
                               reinterpret_cast<const uint8_t*>(values),
-                              nnz * U32);
+                              nnz * kElementSize);
     std::vector<std::vector<idx_t>> results(n);
 
+    SeismicSearchParameters default_params;
     const auto* parameters =
         search_parameters != nullptr
             ? dynamic_cast<const SeismicSearchParameters*>(search_parameters)
-            : std::make_unique<SeismicSearchParameters>().get();
+            : &default_params;
     // For each query vector
     const auto* query_indptr = query_vectors.indptr_data();
     const auto* query_indices = query_vectors.indices_data();

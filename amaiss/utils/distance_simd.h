@@ -1,0 +1,14 @@
+#ifndef DISTANCE_SIMD_H
+#define DISTANCE_SIMD_H
+
+#include "amaiss/sparse_vectors.h"
+
+#if defined(__AVX512F__)
+#include "amaiss/utils/distance_avx512.h"
+// #elif defined(__AVX2__)
+// #include "amaiss/utils/distance_avx2.h"
+#else
+#include "amaiss/utils/distance.h"
+#endif
+
+#endif

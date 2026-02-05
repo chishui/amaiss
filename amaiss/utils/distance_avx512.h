@@ -427,8 +427,8 @@ inline float dot_product_uint8_dense(const term_t* indices,
     return result;
 }
 
-inline auto dot_product_float_dense(const SparseVectors* vectors,
-                                    const std::vector<float>& dense)
+inline auto dot_product_float_vectors_dense(const SparseVectors* vectors,
+                                            const float* dense)
     -> std::vector<float> {
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0.0F);
@@ -447,13 +447,13 @@ inline auto dot_product_float_dense(const SparseVectors* vectors,
                             next_len);
         }
         results[i] = dot_product_float_dense(indices + start, values + start,
-                                             len, dense.data());
+                                             len, dense);
     }
     return results;
 }
 
-inline auto dot_product_uint8_dense(const SparseVectors* vectors,
-                                    const uint8_t* dense)
+inline auto dot_product_uint8_vectors_dense(const SparseVectors* vectors,
+                                            const uint8_t* dense)
     -> std::vector<float> {
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0);
@@ -479,8 +479,8 @@ inline auto dot_product_uint8_dense(const SparseVectors* vectors,
     return results;
 }
 
-inline auto dot_product_uint16_dense(const SparseVectors* vectors,
-                                     const uint16_t* dense)
+inline auto dot_product_uint16_vectors_dense(const SparseVectors* vectors,
+                                             const uint16_t* dense)
     -> std::vector<float> {
     size_t n_vectors = vectors->num_vectors();
     std::vector<float> results(n_vectors, 0);

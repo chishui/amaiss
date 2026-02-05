@@ -8,15 +8,12 @@
 
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
-
+#include "amaiss/utils/distance_simd.h"
 #if defined(__AVX512F__)
 #include <memory>
 #include <type_traits>
 
 #include "amaiss/utils/dense_vector_matrix.h"
-#include "amaiss/utils/distance_avx512.h"
-#else
-#include "amaiss/utils/distance.h"
 #endif
 
 namespace amaiss {
@@ -139,30 +136,35 @@ inline static float dot_product_typed_dense(const term_t* indices,
         const auto* float_values =
             reinterpret_cast<const float*>(values) + offset;
         const auto* float_dense = reinterpret_cast<const float*>(dense);
-        return dot_product_float_dense(indices, float_values, len, float_dense);
+        return dot_product_float_dense(indices + offset, float_values, len,
+                                       float_dense);
     }
     if (element_size == U16) {
         const auto* uint16_values =
             reinterpret_cast<const uint16_t*>(values) + offset;
         const auto* uint16_dense = reinterpret_cast<const uint16_t*>(dense);
-        return dot_product_uint16_dense(indices, uint16_values, len,
+        return dot_product_uint16_dense(indices + offset, uint16_values, len,
                                         uint16_dense);
     }
-    return dot_product_uint8_dense(indices, values + offset, len, dense);
+    return dot_product_uint8_dense(indices + offset, values + offset, len,
+                                   dense);
 }
 
 void map_docs_to_clusters(const SparseVectors* vectors,
                           const std::vector<idx_t>& docs,
                           std::vector<std::vector<idx_t>>& clusters) {
-#if defined(__AVX512F__)
-    map_docs_to_clusters_avx512(vectors, docs, clusters);
-    return;
-#else
     if (vectors == nullptr) {
         throw std::runtime_error("vectors is nullptr");
     }
     size_t n_clusters = clusters.size();
     size_t n_docs = docs.size();
+    if (n_clusters == 0 || n_docs == 0) {
+        return;
+    }
+#if defined(__AVX512F__)
+    map_docs_to_clusters_avx512(vectors, docs, clusters);
+    return;
+#else
 
     const idx_t* indptr = vectors->indptr_data();
     const term_t* indices = vectors->indices_data();
@@ -174,8 +176,13 @@ void map_docs_to_clusters(const SparseVectors* vectors,
         const auto& vec = vectors->get_dense_vector(docs[i]);
         float max_similarity = std::numeric_limits<float>::lowest();
         size_t best_cluster = 0;
+        bool is_centroid = false;
         for (size_t j = 0; j < n_clusters; ++j) {
             idx_t centroid_doc = clusters[j].at(0);
+            if (docs[i] == centroid_doc) {
+                is_centroid = true;
+                break;
+            }
             const idx_t start = indptr[centroid_doc];
             const size_t len = indptr[centroid_doc + 1] - start;
             float similarity = dot_product_typed_dense(
@@ -185,7 +192,9 @@ void map_docs_to_clusters(const SparseVectors* vectors,
                 best_cluster = j;
             }
         }
-        clusters[best_cluster].push_back(docs[i]);
+        if (!is_centroid) {
+            clusters[best_cluster].push_back(docs[i]);
+        }
     }
 #endif
 }

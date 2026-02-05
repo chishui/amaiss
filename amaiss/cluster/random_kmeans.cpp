@@ -55,12 +55,9 @@ inline static size_t boundary_check_n_clusters(size_t n_docs,
 }
 
 std::vector<std::vector<idx_t>> RandomKMeans::train(
-    const Index* index, const std::vector<idx_t>& doc_ids, size_t n_clusters) {
-    throw_if_any_null(index);
-    const auto* vectors = index->get_vectors();
-    if (vectors == nullptr) {
-        throw std::runtime_error("Index has no vectors");
-    }
+    const SparseVectors* vectors, const std::vector<idx_t>& doc_ids,
+    size_t n_clusters) {
+    throw_if_any_null(vectors);
     size_t n_docs = doc_ids.size();
     if (n_docs == 0) {
         return {};
