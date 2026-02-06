@@ -62,8 +62,6 @@ def supported_instruction_sets():
             result.add("AVX2")
         if "avx512" in numpy.distutils.cpuinfo.cpu.info[0].get("flags", ""):
             result.add("AVX512")
-        if "avx512_fp16" in numpy.distutils.cpuinfo.cpu.info[0].get("flags", ""):
-            result.add("AVX512_SPR")
         if is_sve_supported():
             result.add("SVE")
         for f in os.getenv("AMAISS_DISABLE_CPU_FEATURES", "").split(", \t\n\r"):
@@ -91,18 +89,6 @@ else:
     instruction_sets = {opt_level}
 
 loaded = False
-
-has_AVX512_SPR = any("AVX512_SPR" in x.upper() for x in instruction_sets)
-if has_AVX512_SPR:
-    try:
-        logger.info("Loading amaiss with AVX512-SPR support.")
-        from .swigamaiss_avx512_spr import *
-
-        logger.info("Successfully loaded amaiss with AVX512-SPR support.")
-        loaded = True
-    except ImportError as e:
-        logger.info(f"Could not load library with AVX512-SPR support: {e!r}")
-        loaded = False
 
 has_AVX512 = any("AVX512" in x.upper() for x in instruction_sets)
 if has_AVX512 and not loaded:
@@ -151,7 +137,7 @@ if not loaded:
         message = (
             f"No amaiss SWIG module found. Supported instruction sets on this system:\n"
             f"{formatted_ins_sets}\n\n"
-            f"Build with appropriate AMAISS_OPT_LEVEL (avx512_spr, avx512, avx2, sve, or generic)."
+            f"Build with appropriate AMAISS_OPT_LEVEL (avx512, avx2, sve, or generic)."
         )
         logger.error(message)
         sys.exit(1)

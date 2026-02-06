@@ -30,7 +30,6 @@ def prepare_package():
         "swigamaiss",
         "swigamaiss_avx2",
         "swigamaiss_avx512",
-        "swigamaiss_avx512_spr",
         "swigamaiss_sve",
     ]
 

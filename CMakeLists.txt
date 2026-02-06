@@ -13,7 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Third party dependencies
 include(cmake/third_party.cmake)
 
-# Valid values are "generic", "avx2", "avx512", "avx512_spr", "sve".
+# Valid values are "generic", "avx2", "avx512", "sve".
 option(AMAISS_OPT_LEVEL "" "generic")
 option(AMAISS_ENABLE_PYTHON "Build Python bindings" OFF)
 

@@ -36,13 +36,11 @@ endmacro()
 
 configure_file(swigamaiss.swig ${CMAKE_CURRENT_SOURCE_DIR}/swigamaiss_avx2.swig COPYONLY)
 configure_file(swigamaiss.swig ${CMAKE_CURRENT_SOURCE_DIR}/swigamaiss_avx512.swig COPYONLY)
-configure_file(swigamaiss.swig ${CMAKE_CURRENT_SOURCE_DIR}/swigamaiss_avx512_spr.swig COPYONLY)
 configure_file(swigamaiss.swig ${CMAKE_CURRENT_SOURCE_DIR}/swigamaiss_sve.swig COPYONLY)
 
 configure_swigamaiss(swigamaiss.swig)
 configure_swigamaiss(swigamaiss_avx2.swig)
 configure_swigamaiss(swigamaiss_avx512.swig)
-configure_swigamaiss(swigamaiss_avx512_spr.swig)
 configure_swigamaiss(swigamaiss_sve.swig)
 
 
@@ -84,9 +82,8 @@ macro(add_swig_module MODULE_NAME OPT_LEVELS)
   endif()
 endmacro()
 
-add_swig_module(amaiss_avx2 "avx2;avx512;avx512_spr")
+add_swig_module(amaiss_avx2 "avx2;avx512")
 add_swig_module(amaiss_avx512 "avx512")
-add_swig_module(amaiss_avx512_spr "avx512_spr")
 add_swig_module(amaiss_sve "sve")
 
 if(NOT WIN32)
@@ -94,11 +91,10 @@ if(NOT WIN32)
   set_target_properties(swigamaiss PROPERTIES SUFFIX .so)
   set_target_properties(swigamaiss_avx2 PROPERTIES SUFFIX .so)
   set_target_properties(swigamaiss_avx512 PROPERTIES SUFFIX .so)
-  set_target_properties(swigamaiss_avx512_spr PROPERTIES SUFFIX .so)
   set_target_properties(swigamaiss_sve PROPERTIES SUFFIX .so)
 endif()
 
-foreach(_target swigamaiss swigamaiss_avx2 swigamaiss_avx512 swigamaiss_avx512_spr swigamaiss_sve)
+foreach(_target swigamaiss swigamaiss_avx2 swigamaiss_avx512 swigamaiss_sve)
   target_include_directories(${_target} PRIVATE
       ${PROJECT_SOURCE_DIR}
       ${NUMPY_INCLUDE_DIR}
