@@ -60,19 +60,20 @@ import_array();
 
 // Extend Index to provide search methods
 // Use separate names because both overloads have the same number of visible Python args
-// (labels has numinputs=0, so both would appear as 5-arg functions to Python)
+// (labels and distances have numinputs=0, so both would appear as 5-arg functions to Python)
 %extend amaiss::Index {
     // Version without SearchParameters
     void search_c(idx_t n, const idx_t* indptr, const term_t* indices,
-                  const float* values, int k, idx_t* labels) {
-        $self->search(n, indptr, indices, values, k, labels, nullptr);
+                  const float* values, int k, float* distances, idx_t* labels) {
+        $self->search(n, indptr, indices, values, k, distances, labels, nullptr);
     }
     
     // Version with SearchParameters - different name to avoid overload ambiguity
     void search_with_params(idx_t n, const idx_t* indptr, const term_t* indices,
-                            const float* values, int k, idx_t* labels,
+                            const float* values, int k, float* distances,
+                            idx_t* labels,
                             const amaiss::SearchParameters* search_parameters) {
-        $self->search(n, indptr, indices, values, k, labels, search_parameters);
+        $self->search(n, indptr, indices, values, k, distances, labels, search_parameters);
     }
 }
 

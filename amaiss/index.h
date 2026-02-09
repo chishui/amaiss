@@ -2,6 +2,7 @@
 #define INDEX_H
 
 #include <array>
+#include <utility>
 #include <vector>
 
 #include "amaiss/sparse_vectors.h"
@@ -22,7 +23,8 @@ public:
                      const float* values) = 0;
     virtual void build();
     virtual void search(idx_t n, const idx_t* indptr, const term_t* indices,
-                        const float* values, int k, idx_t* labels,
+                        const float* values, int k, float* distances,
+                        idx_t* labels,
                         const SearchParameters* search_parameters =
                             nullptr);  // Pre-allocated: n * k
     virtual const SparseVectors* get_vectors() const = 0;
@@ -35,11 +37,12 @@ public:
     virtual void add_with_ids(idx_t n, const idx_t* indptr,
                               const term_t* indices, const float* values,
                               const idx_t* ids);
+
 protected:
     virtual auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                         const float* values, int k,
                         const SearchParameters* search_parameters = nullptr)
-        -> std::vector<std::vector<idx_t>>;
+        -> pair_of_score_id_vectors_t;
 
     int dimension_;
 };

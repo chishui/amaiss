@@ -15,9 +15,11 @@ void IDMapIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
 void IDMapIndex::build() { delegate_->build(); }
 
 void IDMapIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
-                        const float* values, int k, idx_t* labels,
+                        const float* values, int k, float* distances,
+                        idx_t* labels,
                         const SearchParameters* search_parameters) {
-    delegate_->search(n, indptr, indices, values, k, labels, search_parameters);
+    delegate_->search(n, indptr, indices, values, k, distances, labels,
+                      search_parameters);
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < k; ++j) {
             auto& result_id = labels[i * k + j];

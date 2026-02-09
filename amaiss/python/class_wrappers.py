@@ -32,6 +32,8 @@ def handle_Index(the_class):
 
         Returns
         -------
+        distances : ndarray
+            Array of shape (n, k) with distance scores
         labels : ndarray
             Array of shape (n, k) with neighbor indices
         """
@@ -41,9 +43,12 @@ def handle_Index(the_class):
         values = np.ascontiguousarray(values, dtype=np.float32)
 
         if params is not None:
-            return self.search_with_params(n, indptr, indices, values, k, params)
+            distances, labels = self.search_with_params(
+                n, indptr, indices, values, k, params
+            )
         else:
-            return self.search_c(n, indptr, indices, values, k)
+            distances, labels = self.search_c(n, indptr, indices, values, k)
+        return distances, labels
 
     the_class.search = replacement_search
 

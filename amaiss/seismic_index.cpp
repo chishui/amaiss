@@ -132,9 +132,10 @@ void SeismicIndex::build() {
 auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                           const float* values, int k,
                           const SearchParameters* search_parameters)
-    -> std::vector<std::vector<idx_t>> {
+    -> pair_of_score_id_vectors_t {
     if (vectors_ == nullptr || n == 0) {
-        return std::vector<std::vector<idx_t>>(n);
+        return {std::vector<std::vector<float>>(n),
+                std::vector<std::vector<idx_t>>(n)};
     }
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
@@ -144,7 +145,8 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
     query_vectors.add_vectors(indptr, indptr_size, indices, nnz,
                               reinterpret_cast<const uint8_t*>(values),
                               nnz * kElementSize);
-    std::vector<std::vector<idx_t>> results(n);
+    std::vector<std::vector<float>> result_distances(n);
+    std::vector<std::vector<idx_t>> result_labels(n);
 
     SeismicSearchParameters default_params;
     const auto* parameters =
@@ -165,11 +167,13 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
         const size_t len = query_indptr[query_idx + 1] - start;
         const auto& cuts = top_k_tokens(
             query_indices + start, query_values + start, len, parameters->cut);
-        results[query_idx] =
-            std::move(single_query(dense, cuts, k, parameters->heap_factor));
+        auto [distances, labels] =
+            single_query(dense, cuts, k, parameters->heap_factor);
+        result_distances[query_idx] = std::move(distances);
+        result_labels[query_idx] = std::move(labels);
     }
 
-    return results;
+    return {result_distances, result_labels};
 }
 
 /**
@@ -179,14 +183,15 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
  * @param cuts
  * @param k
  * @param heap_factor
- * @return std::vector<idx_t>
+ * @return std::pair<std::vector<float>, std::vector<idx_t>>
  */
 auto SeismicIndex::single_query(const std::vector<float>& dense,
                                 const std::vector<term_t>& cuts, int k,
-                                float heap_factor) -> std::vector<idx_t> {
+                                float heap_factor)
+    -> pair_of_score_id_vector_t {
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
-        return {};
+        return {{}, {}};
     }
     absl::flat_hash_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
@@ -202,7 +207,10 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
         first_list = false;
     }
 
-    return holder.top_k_descending_with_padding(INVALID_IDX);
+    auto [scores, ids] = holder.top_k_items_descending();
+    scores.resize(k, -1.0F);
+    ids.resize(k, INVALID_IDX);
+    return {scores, ids};
 }
 
 const SparseVectors* SeismicIndex::get_vectors() const {

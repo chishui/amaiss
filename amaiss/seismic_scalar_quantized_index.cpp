@@ -181,13 +181,23 @@ void SeismicScalarQuantizedIndex::build() {
 auto SeismicScalarQuantizedIndex::search(
     idx_t n, const idx_t* indptr, const term_t* indices, const float* values,
     int k, const SearchParameters* search_parameters)
-    -> std::vector<std::vector<idx_t>> {
+    -> pair_of_score_id_vectors_t {
     throw_if_null(search_parameters, "search parameters cannot be null!");
     if (vectors_ == nullptr || n == 0) {
-        return std::vector<std::vector<idx_t>>(n);
+        return {std::vector<std::vector<float>>(n),
+                std::vector<std::vector<idx_t>>(n)};
     }
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
+
+    // Determine query quantizer based on search parameters
+    ScalarQuantizer query_sq = sq_;  // default to same as ingest
+    if (typeid(*search_parameters) == typeid(SeismicSQSearchParameters)) {
+        const auto* sq_params =
+            static_cast<const SeismicSQSearchParameters*>(search_parameters);
+        query_sq = ScalarQuantizer(sq_.get_quantizer_type(), sq_params->vmin,
+                                   sq_params->vmax);
+    }
 
     // construct query vector
     const size_t element_size = sq_.bytes_per_value();
@@ -197,7 +207,8 @@ auto SeismicScalarQuantizedIndex::search(
     query_vectors.add_vectors(indptr, indptr_size, indices, nnz, codes.data(),
                               nnz * element_size);
 
-    std::vector<std::vector<idx_t>> results(n);
+    std::vector<std::vector<float>> result_distances(n);
+    std::vector<std::vector<idx_t>> result_labels(n);
 
     // query
     const auto* parameters =
@@ -227,19 +238,22 @@ auto SeismicScalarQuantizedIndex::search(
                                          parameters->cut);
         }
 
-        results[query_idx] =
-            std::move(single_query(dense, cuts, k, parameters->heap_factor));
+        auto [distances, labels] =
+            single_query(dense, cuts, k, parameters->heap_factor, query_sq);
+        result_distances[query_idx] = std::move(distances);
+        result_labels[query_idx] = std::move(labels);
     }
 
-    return results;
+    return {result_distances, result_labels};
 }
 
 auto SeismicScalarQuantizedIndex::single_query(
     const std::vector<uint8_t>& dense, const std::vector<term_t>& cuts, int k,
-    float heap_factor) -> std::vector<idx_t> {
+    float heap_factor, const ScalarQuantizer& query_sq)
+    -> pair_of_score_id_vector_t {
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
-        return {};
+        return {{}, {}};
     }
     absl::flat_hash_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
@@ -255,7 +269,15 @@ auto SeismicScalarQuantizedIndex::single_query(
         first_list = false;
     }
 
-    return holder.top_k_descending_with_padding(INVALID_IDX);
+    auto [distances, labels] = holder.top_k_items_descending();
+
+    // Decode quantized dot product scores
+    for (auto& dist : distances) {
+        dist = sq_.decode_dot_product(dist, query_sq);
+    }
+    distances.resize(k, INVALID_IDX);
+    labels.resize(k, -1.0F);
+    return {distances, labels};
 }
 
 void SeismicScalarQuantizedIndex::write_index(IOWriter* io_writer) {

@@ -64,6 +64,18 @@ public:
     float get_min() const { return vmin_; }
     float get_max() const { return vmax_; }
 
+    /// Decode a quantized dot product score back to approximate original scale
+    /// Uses this quantizer for ingest and query_sq for query quantization
+    [[nodiscard]] float decode_dot_product(
+        float quantized_score, const ScalarQuantizer& query_sq) const {
+        const float ingest_range = vmax_ - vmin_;
+        const float query_range = query_sq.get_max() - query_sq.get_min();
+        const float max_q =
+            (qtype_ == QuantizerType::QT_8bit) ? kMax8bit : kMax16bit;
+        const float scale = (ingest_range * query_range) / (max_q * max_q);
+        return quantized_score * scale;
+    }
+
 private:
     /// Encode a single float value to 8-bit
     [[nodiscard]] uint8_t encode_8bit(float val) const {

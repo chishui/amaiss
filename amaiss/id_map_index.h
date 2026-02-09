@@ -21,7 +21,7 @@ public:
              const float* values) override;
     void build() override;
     void search(idx_t n, const idx_t* indptr, const term_t* indices,
-                const float* values, int k, idx_t* labels,
+                const float* values, int k, float* distances, idx_t* labels,
                 const SearchParameters* search_parameters = nullptr) override;
     const SparseVectors* get_vectors() const override;
 

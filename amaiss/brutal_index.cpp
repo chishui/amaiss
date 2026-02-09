@@ -37,9 +37,10 @@ void BrutalIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
 auto BrutalIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                          const float* values, int k,
                          const SearchParameters* search_parameters)
-    -> std::vector<std::vector<idx_t>> {
+    -> pair_of_score_id_vectors_t {
     if (vectors_ == nullptr || n == 0) {
-        return std::vector<std::vector<idx_t>>(n);
+        return {std::vector<std::vector<float>>(n),
+                std::vector<std::vector<idx_t>>(n)};
     }
     size_t indptr_size = n + 1;
     size_t nnz = indptr[n];  // Total non-zeros
@@ -49,23 +50,26 @@ auto BrutalIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
     query_vectors.add_vectors(indptr, indptr_size, indices, nnz,
                               reinterpret_cast<const uint8_t*>(values),
                               nnz * U32);
-    std::vector<std::vector<idx_t>> results(n);
+    std::vector<std::vector<float>> result_distances(n);
+    std::vector<std::vector<idx_t>> result_labels(n);
     // For each query vector
 #pragma omp parallel for
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
         auto dense = query_vectors.get_dense_vector_float(query_idx);
-        results[query_idx] = single_query(dense, k);
+        auto [distances, labels] = single_query(dense, k);
+        result_distances[query_idx] = std::move(distances);
+        result_labels[query_idx] = std::move(labels);
     }
 
-    return results;
+    return {result_distances, result_labels};
 }
 
 auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
-    -> std::vector<idx_t> {
+    -> pair_of_score_id_vector_t {
     DedupeTopKHolder<idx_t> holder(k);
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
-        return {};
+        return {{}, {}};
     }
 
     // Hoist pointer fetches outside the loop for hot path optimization
@@ -76,9 +80,11 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
         const size_t len = indptr[i + 1] - start;
         float score = dot_product_float_dense(indices + start, values + start,
                                               len, dense.data());
-        holder.add(score, i);
+        holder.add(score, static_cast<idx_t>(i));
     }
-    return holder.top_k_descending_with_padding(INVALID_IDX);
+    auto [labels, scores] =
+        holder.top_k_descending_with_scores_and_padding(INVALID_IDX, -1.0F);
+    return {scores, labels};
 }
 
 const SparseVectors* BrutalIndex::get_vectors() const { return vectors_.get(); }

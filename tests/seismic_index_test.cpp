@@ -222,9 +222,10 @@ TEST(SeismicIndexSearch, search_returns_empty_when_no_vectors) {
     std::vector<term_t> query_indices = {0, 1};
     std::vector<float> query_values = {1.0F, 0.5F};
     std::vector<idx_t> labels(5, -1);
+    std::vector<float> distances(5, -1.0F);
 
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 5, labels.data());
+                query_values.data(), 5, distances.data(), labels.data());
 
     for (const auto& label : labels) {
         EXPECT_EQ(label, -1);
@@ -242,10 +243,12 @@ TEST(SeismicIndexSearch, search_finds_matching_doc) {
     std::vector<term_t> query_indices = {0};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(1, -1);
+    std::vector<float> distances(1, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 1, labels.data(), &params);
+                query_values.data(), 1, distances.data(), labels.data(),
+                &params);
 
     EXPECT_EQ(labels[0], 0);
 }
@@ -261,10 +264,12 @@ TEST(SeismicIndexSearch, search_multiple_queries) {
     std::vector<term_t> query_indices = {0, 2};
     std::vector<float> query_values = {1.0F, 1.0F};
     std::vector<idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(2, query_indptr.data(), query_indices.data(),
-                query_values.data(), 1, labels.data(), &params);
+                query_values.data(), 1, distances.data(), labels.data(),
+                &params);
 
     EXPECT_EQ(labels[0], 0);
     EXPECT_EQ(labels[1], 1);
@@ -281,10 +286,12 @@ TEST(SeismicIndexSearch, search_respects_k_limit) {
     std::vector<term_t> query_indices = {0};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 2, labels.data(), &params);
+                query_values.data(), 2, distances.data(), labels.data(),
+                &params);
 
     // Top 2 by score: doc0 (1.0), doc1 (0.9)
     EXPECT_EQ(labels[0], 0);
@@ -304,10 +311,12 @@ TEST(SeismicIndexSearch, search_with_no_matching_term) {
     std::vector<term_t> query_indices = {3};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(1, -1);
+    std::vector<float> distances(1, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 1, labels.data(), &params);
+                query_values.data(), 1, distances.data(), labels.data(),
+                &params);
 
     // No docs have term 3, so inverted list for term 3 is empty
     // TopKHolder::top_k_descending_with_padding() pads with -1
@@ -327,10 +336,12 @@ TEST(SeismicIndexSearch, search_returns_results_sorted_by_score) {
     std::vector<term_t> query_indices = {0};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 3, labels.data(), &params);
+                query_values.data(), 3, distances.data(), labels.data(),
+                &params);
 
     // Sorted by score descending: doc1 (1.0), doc2 (0.5), doc0 (0.3)
     EXPECT_EQ(labels[0], 1);
@@ -349,9 +360,11 @@ TEST(SeismicIndexSearch, search_with_default_parameters) {
     std::vector<term_t> query_indices = {0, 1};
     std::vector<float> query_values = {1.0F, 0.5F};
     std::vector<idx_t> labels(1, -1);
+    std::vector<float> distances(1, -1.0F);
 
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 1, labels.data(), nullptr);
+                query_values.data(), 1, distances.data(), labels.data(),
+                nullptr);
 
     EXPECT_EQ(labels[0], 0);
 }
@@ -383,10 +396,12 @@ TEST(SeismicIndexSearch, lambda_prunes_posting_list) {
     std::vector<term_t> query_indices = {0};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(4, -1);
+    std::vector<float> distances(4, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 4, labels.data(), &params);
+                query_values.data(), 4, distances.data(), labels.data(),
+                &params);
 
     // Only 2 docs in posting list, so only 2 results, rest padded with -1
     EXPECT_EQ(labels[0], 3);   // doc3 (score 0.4)
@@ -410,10 +425,12 @@ TEST(SeismicIndexSearch, cut_prunes_query_tokens) {
     std::vector<term_t> query_indices = {0, 1, 2};
     std::vector<float> query_values = {0.1F, 0.5F, 0.9F};
     std::vector<idx_t> labels(1, -1);
+    std::vector<float> distances(1, -1.0F);
 
     SeismicSearchParameters params(1, 1.0F);  // cut=1
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 1, labels.data(), &params);
+                query_values.data(), 1, distances.data(), labels.data(),
+                &params);
 
     // Only term2 is used, so only doc2 is found
     EXPECT_EQ(labels[0], 2);
@@ -445,12 +462,14 @@ TEST(SeismicIndexSearch, large_heap_factor_includes_all_clusters) {
     std::vector<term_t> query_indices = {0, 1, 2};
     std::vector<float> query_values = {1.0F, 0.8F, 0.5F};
     std::vector<idx_t> labels(6, -1);
+    std::vector<float> distances(6, -1.0F);
 
     // heap_factor=1000.0 ensures all clusters across all query terms are
     // processed
     SeismicSearchParameters params(5, 1000.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 6, labels.data(), &params);
+                query_values.data(), 6, distances.data(), labels.data(),
+                &params);
 
     // Scores (dot product of doc vector with query vector):
     // doc0: 1.0*1.0 + 0.5*0.8 = 1.4
@@ -497,15 +516,19 @@ TEST(SeismicIndexSearch, small_heap_factor_prunes_clusters) {
     // After processing first cluster of first term, heap fills up
     // Subsequent clusters may be skipped due to low summary_score * heap_factor
     std::vector<idx_t> labels_small(3, -1);
+    std::vector<float> distances_small(3, -1.0F);
     SeismicSearchParameters params_small(5, 0.001F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 3, labels_small.data(), &params_small);
+                query_values.data(), 3, distances_small.data(),
+                labels_small.data(), &params_small);
 
     // With large heap_factor=1000, all clusters across all terms are processed
     std::vector<idx_t> labels_large(6, -1);
+    std::vector<float> distances_large(6, -1.0F);
     SeismicSearchParameters params_large(5, 1000.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), 6, labels_large.data(), &params_large);
+                query_values.data(), 6, distances_large.data(),
+                labels_large.data(), &params_large);
 
     // Large heap_factor should find all docs with matching terms, sorted by
     // score Scores: doc0=1.4, doc1=0.9, doc2=0.79, doc3=0.35, doc5=0.1, doc4=0
@@ -563,11 +586,12 @@ TEST(SeismicIndexSearch, heap_factor_controls_result_count_large_dataset) {
     // Test with very small heap_factor - aggressive pruning
     // cut=2 means only top 2 query terms by weight are used
     std::vector<idx_t> labels_small(kDocCount, -1);
+    std::vector<float> distances_small(kDocCount, -1.0F);
     SeismicSearchParameters params_small(2, 0.000001F);
     Index* idx = &index;
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), kDocCount, labels_small.data(),
-                &params_small);
+                query_values.data(), kDocCount, distances_small.data(),
+                labels_small.data(), &params_small);
 
     // Count valid results with small heap_factor
     int count_small = 0;
@@ -580,10 +604,11 @@ TEST(SeismicIndexSearch, heap_factor_controls_result_count_large_dataset) {
     // Test with very large heap_factor - no pruning
     // cut=4 means all query terms are used
     std::vector<idx_t> labels_large(kDocCount, -1);
+    std::vector<float> distances_large(kDocCount, -1.0F);
     SeismicSearchParameters params_large(4, 100000.0F);
     idx->search(1, query_indptr.data(), query_indices.data(),
-                query_values.data(), kDocCount, labels_large.data(),
-                &params_large);
+                query_values.data(), kDocCount, distances_large.data(),
+                labels_large.data(), &params_large);
 
     // Count valid results with large heap_factor
     int count_large = 0;
@@ -703,12 +728,13 @@ TEST(SeismicIndexIO, write_and_read_search_produces_same_results) {
     std::vector<term_t> query_indices = {0, 1};
     std::vector<float> query_values = {1.0F, 0.8F};
     std::vector<idx_t> labels_original(3, -1);
+    std::vector<float> distances_original(3, -1.0F);
 
     SeismicSearchParameters params(5, 1000.0F);
     Index* idx_original = &original;
     idx_original->search(1, query_indptr.data(), query_indices.data(),
-                         query_values.data(), 3, labels_original.data(),
-                         &params);
+                         query_values.data(), 3, distances_original.data(),
+                         labels_original.data(), &params);
 
     // Write and read
     BufferedIOWriter writer;
@@ -719,8 +745,10 @@ TEST(SeismicIndexIO, write_and_read_search_produces_same_results) {
 
     // Search on loaded
     std::vector<idx_t> labels_loaded(3, -1);
+    std::vector<float> distances_loaded(3, -1.0F);
     loaded->search(1, query_indptr.data(), query_indices.data(),
-                   query_values.data(), 3, labels_loaded.data(), &params);
+                   query_values.data(), 3, distances_loaded.data(),
+                   labels_loaded.data(), &params);
 
     // Results should be identical
     EXPECT_EQ(labels_original[0], labels_loaded[0]);
@@ -753,10 +781,12 @@ TEST(SeismicIndexIO, write_and_read_multiple_terms) {
     std::vector<term_t> query_indices = {0};
     std::vector<float> query_values = {1.0F};
     std::vector<idx_t> labels(1, -1);
+    std::vector<float> distances(1, -1.0F);
 
     SeismicSearchParameters params(5, 1.0F);
     loaded->search(1, query_indptr.data(), query_indices.data(),
-                   query_values.data(), 1, labels.data(), &params);
+                   query_values.data(), 1, distances.data(), labels.data(),
+                   &params);
 
     EXPECT_EQ(labels[0], 0);
 

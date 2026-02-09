@@ -51,12 +51,11 @@ private:
     auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                 const float* values, int k,
                 const SearchParameters* search_parameters = nullptr)
-        -> std::vector<std::vector<idx_t>> override;
+        -> pair_of_score_id_vectors_t override;
 
     auto single_query(const std::vector<float>& dense,
                       const std::vector<term_t>& cuts, int k, float heap_factor)
-        -> std::vector<idx_t>;
-
+        -> pair_of_score_id_vector_t;
     std::unique_ptr<SparseVectors> vectors_;
     int lambda_;
     int beta_;

@@ -76,7 +76,7 @@ def main():
     params = amaiss.SeismicSearchParameters(k, 1.2)
 
     # Perform search
-    labels = index.search(
+    distances, labels = index.search(
         n_queries, query_indptr, query_indices, query_values, k, params
     )
 
@@ -84,7 +84,8 @@ def main():
     print(f"Labels shape: {labels.shape}")
     for i in range(n_queries):
         neighbors = labels[i]
-        print(f"Query {i}: {neighbors}")
+        scores = distances[i]
+        print(f"Query {i}: {neighbors}, scores: {scores}")
 
 
 if __name__ == "__main__":

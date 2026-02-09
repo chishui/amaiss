@@ -90,15 +90,29 @@
     $1 = temp;
 }
 
-// Use a multi-argument typemap to capture n, k, and labels together
-// For member functions, self is arg 1, so labels is arg 7
-%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, amaiss::idx_t* labels) {
+// Typemap for distances output parameter
+%typemap(in, numinputs=0) float* distances (float* temp_dist) {
+    // Will be allocated in the check typemap
+    temp_dist = nullptr;
+    $1 = temp_dist;
+}
+
+// Use a multi-argument typemap to capture n, k, distances, and labels together
+// For member functions, self is arg 1, so distances is arg 7, labels is arg 8
+%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, float* distances, amaiss::idx_t* labels) {
     // Store n and k in the local variables from the labels typemap
-    n_store7 = $1;  // n (labels is arg 7 including self)
-    k_store7 = $5;  // k
-    // Allocate labels array: n * k using malloc so NumPy can free it
-    $6 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
+    n_store8 = $1;  // n (labels is arg 8 including self)
+    k_store8 = $5;  // k
+    // Allocate distances array: n * k
+    $6 = (float*)malloc($1 * $5 * sizeof(float));
     if (!$6) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for distances");
+        SWIG_fail;
+    }
+    // Allocate labels array: n * k using malloc so NumPy can free it
+    $7 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
+    if (!$7) {
+        free($6);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for labels");
         SWIG_fail;
     }
@@ -124,8 +138,32 @@
     %append_output(array);
 }
 
+// Convert the distances output array to a 2D NumPy array (n x k) and return it
+%typemap(argout) float* distances {
+    // Create a 2D array with shape (n, k) - reuse n_store and k_store from labels
+    npy_intp dims[2];
+    dims[0] = n_store8;  // n (number of queries)
+    dims[1] = k_store8;  // k (number of neighbors per query)
+    
+    PyObject* dist_array = PyArray_SimpleNewFromData(2, dims, NPY_FLOAT32, (void*)$1);
+    if (!dist_array) {
+        free($1);
+        SWIG_fail;
+    }
+    
+    // Make NumPy own the data so it gets freed when the array is deleted
+    PyArray_ENABLEFLAGS((PyArrayObject*)dist_array, NPY_ARRAY_OWNDATA);
+    
+    // Append to result tuple
+    %append_output(dist_array);
+}
+
 // Prevent double-free: NumPy now owns the memory
 %typemap(freearg) amaiss::idx_t* labels {
+    // Do nothing - NumPy owns the memory now
+}
+
+%typemap(freearg) float* distances {
     // Do nothing - NumPy owns the memory now
 }
 
@@ -179,13 +217,19 @@
     }
 }
 
-// Multi-argument typemap for search with labels followed by SearchParameters
-// For member functions, self is arg 1, so labels is arg 7, search_parameters is arg 8
-%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, amaiss::idx_t* labels, const amaiss::SearchParameters* search_parameters) {
-    n_store7 = $1;  // n
-    k_store7 = $5;  // k
-    $6 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
+// Multi-argument typemap for search with distances, labels, followed by SearchParameters
+// For member functions, self is arg 1, so distances is arg 7, labels is arg 8, search_parameters is arg 9
+%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, float* distances, amaiss::idx_t* labels, const amaiss::SearchParameters* search_parameters) {
+    n_store8 = $1;  // n
+    k_store8 = $5;  // k
+    $6 = (float*)malloc($1 * $5 * sizeof(float));
     if (!$6) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for distances");
+        SWIG_fail;
+    }
+    $7 = (amaiss::idx_t*)malloc($1 * $5 * sizeof(amaiss::idx_t));
+    if (!$7) {
+        free($6);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory for labels");
         SWIG_fail;
     }

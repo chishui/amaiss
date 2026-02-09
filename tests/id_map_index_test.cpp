@@ -84,9 +84,11 @@ TEST_F(IDMapIndexTest, search_returns_external_ids) {
     std::vector<amaiss::term_t> query_indices = {0, 1};
     std::vector<float> query_values = {1.0F, 1.0F};
     std::vector<amaiss::idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
 
     idmap_->search(1, query_indptr.data(), query_indices.data(),
-                   query_values.data(), 3, labels.data(), nullptr);
+                   query_values.data(), 3, distances.data(), labels.data(),
+                   nullptr);
 
     // Results should be external IDs (1000, 2000, 3000), not internal (0, 1, 2)
     for (const auto& label : labels) {
@@ -111,9 +113,11 @@ TEST_F(IDMapIndexTest, search_preserves_negative_ids) {
     std::vector<amaiss::term_t> query_indices = {0, 1};
     std::vector<float> query_values = {1.0F, 1.0F};
     std::vector<amaiss::idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
 
     idmap_->search(1, query_indptr.data(), query_indices.data(),
-                   query_values.data(), 3, labels.data(), nullptr);
+                   query_values.data(), 3, distances.data(), labels.data(),
+                   nullptr);
 
     // First result should be external ID, rest should be -1 (padding)
     EXPECT_EQ(labels[0], 1000);

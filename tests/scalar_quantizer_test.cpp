@@ -255,3 +255,58 @@ TEST(ScalarQuantizer, precision_16bit_better_than_8bit) {
 
     ASSERT_LT(error16, error8);
 }
+
+// decode_dot_product tests
+TEST(ScalarQuantizer, decode_dot_product_8bit_same_quantizer) {
+    ScalarQuantizer sq(QuantizerType::QT_8bit, 0.0F, 1.0F);
+    // For range [0,1] and 8-bit: scale = (1*1)/(255*255) = 1/65025
+    float quantized_score = 65025.0F;  // max possible: 255 * 255
+    float decoded = sq.decode_dot_product(quantized_score, sq);
+    ASSERT_NEAR(decoded, 1.0F, 0.001F);
+}
+
+TEST(ScalarQuantizer, decode_dot_product_8bit_zero_score) {
+    ScalarQuantizer sq(QuantizerType::QT_8bit, 0.0F, 1.0F);
+    float decoded = sq.decode_dot_product(0.0F, sq);
+    ASSERT_FLOAT_EQ(decoded, 0.0F);
+}
+
+TEST(ScalarQuantizer, decode_dot_product_8bit_different_ranges) {
+    ScalarQuantizer ingest_sq(QuantizerType::QT_8bit, 0.0F, 2.0F);
+    ScalarQuantizer query_sq(QuantizerType::QT_8bit, 0.0F, 4.0F);
+    // scale = (2 * 4) / (255 * 255) = 8 / 65025
+    float quantized_score = 65025.0F;
+    float decoded = ingest_sq.decode_dot_product(quantized_score, query_sq);
+    ASSERT_NEAR(decoded, 8.0F, 0.001F);
+}
+
+TEST(ScalarQuantizer, decode_dot_product_16bit_same_quantizer) {
+    ScalarQuantizer sq(QuantizerType::QT_16bit, 0.0F, 1.0F);
+    // For range [0,1] and 16-bit: scale = 1/(65535*65535)
+    float quantized_score = 65535.0F * 65535.0F;
+    float decoded = sq.decode_dot_product(quantized_score, sq);
+    ASSERT_NEAR(decoded, 1.0F, 0.001F);
+}
+
+TEST(ScalarQuantizer, decode_dot_product_16bit_different_ranges) {
+    ScalarQuantizer ingest_sq(QuantizerType::QT_16bit, 0.0F, 10.0F);
+    ScalarQuantizer query_sq(QuantizerType::QT_16bit, 0.0F, 5.0F);
+    // scale = (10 * 5) / (65535 * 65535) = 50 / 4295098225
+    float quantized_score = 65535.0F * 65535.0F;
+    float decoded = ingest_sq.decode_dot_product(quantized_score, query_sq);
+    ASSERT_NEAR(decoded, 50.0F, 0.01F);
+}
+
+TEST(ScalarQuantizer, decode_dot_product_preserves_relative_ordering) {
+    ScalarQuantizer sq(QuantizerType::QT_8bit, 0.0F, 1.0F);
+    float score1 = 1000.0F;
+    float score2 = 2000.0F;
+    float score3 = 3000.0F;
+
+    float decoded1 = sq.decode_dot_product(score1, sq);
+    float decoded2 = sq.decode_dot_product(score2, sq);
+    float decoded3 = sq.decode_dot_product(score3, sq);
+
+    ASSERT_LT(decoded1, decoded2);
+    ASSERT_LT(decoded2, decoded3);
+}

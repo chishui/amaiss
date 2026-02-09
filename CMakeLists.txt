@@ -32,3 +32,9 @@ option(AMAISS_ENABLE_TESTS "Build unit tests" OFF)
 if(AMAISS_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
+
+# Benchmarks
+option(AMAISS_ENABLE_BENCHMARKS "Build benchmarks" OFF)
+if(AMAISS_ENABLE_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
