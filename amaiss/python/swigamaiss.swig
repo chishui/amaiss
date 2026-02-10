@@ -6,6 +6,7 @@
 #include <numpy/arrayobject.h>
 #include "amaiss/types.h"
 #include "amaiss/io/io.h"
+#include "amaiss/id_selector.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/index.h"
@@ -30,6 +31,25 @@ import_array();
 %include "amaiss/sparse_vectors.h"
 %include "amaiss/invlists/inverted_lists.h"
 %include "amaiss/utils/scalar_quantizer.h"
+
+// IDSelector support - expose the class hierarchy for Python
+// Multi-argument typemap: Python passes a single int32 array, n is inferred
+%typemap(in) (size_t n, const amaiss::idx_t* indices) (Py_buffer view) {
+    if (PyObject_GetBuffer($input, &view, PyBUF_FORMAT | PyBUF_C_CONTIGUOUS) == -1) {
+        SWIG_fail;
+    }
+    if (strcmp(view.format, "i") != 0) {
+        PyBuffer_Release(&view);
+        PyErr_SetString(PyExc_TypeError, "Expected int32 array for indices");
+        SWIG_fail;
+    }
+    $1 = (size_t)(view.shape[0]);
+    $2 = (amaiss::idx_t*)view.buf;
+}
+%typemap(freearg) (size_t n, const amaiss::idx_t* indices) {
+    PyBuffer_Release(&view$argnum);
+}
+%include "amaiss/id_selector.h"
 
 // IO classes needed for index serialization (must come before index.h)
 // Ignore internal IO classes - not needed in Python API
@@ -72,7 +92,7 @@ import_array();
     void search_with_params(idx_t n, const idx_t* indptr, const term_t* indices,
                             const float* values, int k, float* distances,
                             idx_t* labels,
-                            const amaiss::SearchParameters* search_parameters) {
+                            amaiss::SearchParameters* search_parameters) {
         $self->search(n, indptr, indices, values, k, distances, labels, search_parameters);
     }
 }

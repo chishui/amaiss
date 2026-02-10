@@ -13,7 +13,7 @@ void Index::build() { throw_not_implemented(); }
 
 void Index::search(idx_t n, const idx_t* indptr, const term_t* indices,
                    const float* values, int k, float* distances, idx_t* labels,
-                   const SearchParameters* search_parameters) {
+                   SearchParameters* search_parameters) {
     throw_if_not_positive(n);
     throw_if_not_positive(k);
     throw_if_any_null(indptr, indices, values, labels, distances);
@@ -32,7 +32,7 @@ void Index::search(idx_t n, const idx_t* indptr, const term_t* indices,
 
 auto Index::search(idx_t n, const idx_t* indptr, const term_t* indices,
                    const float* values, int k,
-                   const SearchParameters* search_parameters)
+                   SearchParameters* search_parameters)
     -> pair_of_score_id_vectors_t {
     throw_not_implemented("search not implementted in Index");
 }

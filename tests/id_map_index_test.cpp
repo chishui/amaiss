@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "amaiss/id_selector.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/types.h"
 
@@ -142,4 +143,158 @@ TEST(IDMapIndex, default_constructor) {
     amaiss::IDMapIndex idmap;
     EXPECT_EQ(idmap.get_vectors(), nullptr);
     EXPECT_EQ(idmap.num_vectors(), 0);
+}
+
+TEST_F(IDMapIndexTest, search_with_null_search_parameters) {
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
+    std::vector<amaiss::term_t> indices = {0, 1, 0, 1};
+    std::vector<float> values = {1.0F, 0.5F, 0.3F, 0.2F};
+    std::vector<amaiss::idx_t> ids = {100, 200};
+
+    idmap_->add_with_ids(2, indptr.data(), indices.data(), values.data(),
+                         ids.data());
+    idmap_->build();
+
+    std::vector<amaiss::idx_t> query_indptr = {0, 2};
+    std::vector<amaiss::term_t> query_indices = {0, 1};
+    std::vector<float> query_values = {1.0F, 1.0F};
+    std::vector<amaiss::idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
+
+    // Should not crash with nullptr search_parameters
+    idmap_->search(1, query_indptr.data(), query_indices.data(),
+                   query_values.data(), 2, distances.data(), labels.data(),
+                   nullptr);
+
+    for (const auto& label : labels) {
+        EXPECT_TRUE(label == 100 || label == 200 || label == -1);
+    }
+}
+
+TEST_F(IDMapIndexTest, search_with_search_parameters_no_id_selector) {
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
+    std::vector<amaiss::term_t> indices = {0, 1, 0, 1};
+    std::vector<float> values = {1.0F, 0.5F, 0.3F, 0.2F};
+    std::vector<amaiss::idx_t> ids = {100, 200};
+
+    idmap_->add_with_ids(2, indptr.data(), indices.data(), values.data(),
+                         ids.data());
+    idmap_->build();
+
+    std::vector<amaiss::idx_t> query_indptr = {0, 2};
+    std::vector<amaiss::term_t> query_indices = {0, 1};
+    std::vector<float> query_values = {1.0F, 1.0F};
+    std::vector<amaiss::idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
+
+    // SeismicSearchParameters with no IDSelector set (defaults to nullptr)
+    amaiss::SeismicSearchParameters params;
+    idmap_->search(1, query_indptr.data(), query_indices.data(),
+                   query_values.data(), 2, distances.data(), labels.data(),
+                   &params);
+
+    // Both vectors should be returned since no filtering
+    for (const auto& label : labels) {
+        EXPECT_TRUE(label == 100 || label == 200 || label == -1);
+    }
+}
+
+TEST_F(IDMapIndexTest, search_with_id_selector_filters_by_external_id) {
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4, 6};
+    std::vector<amaiss::term_t> indices = {0, 1, 0, 1, 0, 1};
+    std::vector<float> values = {1.0F, 0.5F, 0.3F, 0.2F, 0.8F, 0.4F};
+    std::vector<amaiss::idx_t> ids = {100, 200, 300};
+
+    idmap_->add_with_ids(3, indptr.data(), indices.data(), values.data(),
+                         ids.data());
+    idmap_->build();
+
+    std::vector<amaiss::idx_t> query_indptr = {0, 2};
+    std::vector<amaiss::term_t> query_indices = {0, 1};
+    std::vector<float> query_values = {1.0F, 1.0F};
+    std::vector<amaiss::idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
+
+    // SetIDSelector with external IDs — only allow 100 and 300
+    std::vector<amaiss::idx_t> allowed_ids = {100, 300};
+    amaiss::SetIDSelector selector(allowed_ids.size(), allowed_ids.data());
+    amaiss::SeismicSearchParameters params;
+    params.set_id_selector(&selector);
+
+    idmap_->search(1, query_indptr.data(), query_indices.data(),
+                   query_values.data(), 3, distances.data(), labels.data(),
+                   &params);
+
+    // External ID 200 should be filtered out
+    for (const auto& label : labels) {
+        EXPECT_NE(label, 200);
+        EXPECT_TRUE(label == 100 || label == 300 || label == -1);
+    }
+}
+
+TEST_F(IDMapIndexTest, search_with_id_selector_excludes_all) {
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
+    std::vector<amaiss::term_t> indices = {0, 1, 0, 1};
+    std::vector<float> values = {1.0F, 0.5F, 0.3F, 0.2F};
+    std::vector<amaiss::idx_t> ids = {100, 200};
+
+    idmap_->add_with_ids(2, indptr.data(), indices.data(), values.data(),
+                         ids.data());
+    idmap_->build();
+
+    std::vector<amaiss::idx_t> query_indptr = {0, 2};
+    std::vector<amaiss::term_t> query_indices = {0, 1};
+    std::vector<float> query_values = {1.0F, 1.0F};
+    std::vector<amaiss::idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
+
+    // Selector that matches no existing external IDs
+    std::vector<amaiss::idx_t> allowed_ids = {999};
+    amaiss::SetIDSelector selector(allowed_ids.size(), allowed_ids.data());
+    amaiss::SeismicSearchParameters params;
+    params.set_id_selector(&selector);
+
+    idmap_->search(1, query_indptr.data(), query_indices.data(),
+                   query_values.data(), 2, distances.data(), labels.data(),
+                   &params);
+
+    // All results should be -1 since nothing passes the filter
+    for (const auto& label : labels) {
+        EXPECT_EQ(label, -1);
+    }
+}
+
+TEST_F(IDMapIndexTest, search_with_not_id_selector) {
+    std::vector<amaiss::idx_t> indptr = {0, 2, 4, 6};
+    std::vector<amaiss::term_t> indices = {0, 1, 0, 1, 0, 1};
+    std::vector<float> values = {1.0F, 0.5F, 0.3F, 0.2F, 0.8F, 0.4F};
+    std::vector<amaiss::idx_t> ids = {100, 200, 300};
+
+    idmap_->add_with_ids(3, indptr.data(), indices.data(), values.data(),
+                         ids.data());
+    idmap_->build();
+
+    std::vector<amaiss::idx_t> query_indptr = {0, 2};
+    std::vector<amaiss::term_t> query_indices = {0, 1};
+    std::vector<float> query_values = {1.0F, 1.0F};
+    std::vector<amaiss::idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
+
+    // Exclude external ID 200 using NotIDSelector
+    std::vector<amaiss::idx_t> excluded_ids = {200};
+    amaiss::SetIDSelector inner_selector(excluded_ids.size(),
+                                         excluded_ids.data());
+    amaiss::NotIDSelector not_selector(&inner_selector);
+    amaiss::SeismicSearchParameters params;
+    params.set_id_selector(&not_selector);
+
+    idmap_->search(1, query_indptr.data(), query_indices.data(),
+                   query_values.data(), 3, distances.data(), labels.data(),
+                   &params);
+
+    // 200 should be excluded
+    for (const auto& label : labels) {
+        EXPECT_NE(label, 200);
+        EXPECT_TRUE(label == 100 || label == 300 || label == -1);
+    }
 }

@@ -10,10 +10,12 @@
 #include "absl/container/flat_hash_set.h"
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/cluster/random_kmeans.h"
+#include "amaiss/id_selector.h"
 #include "amaiss/index.h"
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/io/io.h"
 #include "amaiss/io/seismic_invlists_writer.h"
+#include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 #include "amaiss/utils/distance_simd.h"
@@ -22,29 +24,23 @@
 #include "amaiss/utils/vector_process.h"
 
 namespace amaiss {
-
-static void query_single_inverted_list(
-    const SparseVectors* vectors, const InvertedListClusters& cluster_invlist,
-    const std::vector<uint8_t>& dense, TopKHolder<idx_t>& heap,
-    absl::flat_hash_set<idx_t>& visited, float heap_factor, bool first_list) {
-    // Skip empty clusters
-    size_t csize = cluster_invlist.cluster_size();
-    if (csize == 0) {
-        return;
-    }
-    const auto element_size = vectors->get_element_size();
-    const auto& summaries = cluster_invlist.summaries();
-    // compute dp with all summaries
+namespace {
+inline std::vector<float> calculate_summary_scores(
+    const size_t element_size, const SparseVectors* summaries,
+    const std::vector<uint8_t>& dense) {
     std::vector<float> summary_scores;
     if (element_size == U16) {
         summary_scores = dot_product_uint16_vectors_dense(
-            &summaries, reinterpret_cast<const uint16_t*>(dense.data()));
+            summaries, reinterpret_cast<const uint16_t*>(dense.data()));
     } else {
         summary_scores =
-            dot_product_uint8_vectors_dense(&summaries, dense.data());
+            dot_product_uint8_vectors_dense(summaries, dense.data());
     }
-    size_t num_vectors = vectors->num_vectors();
+    return summary_scores;
+}
 
+inline std::vector<size_t> reorder_clusters(
+    const std::vector<float>& summary_scores, bool first_list) {
     std::vector<size_t> cluster_order(summary_scores.size());
     std::iota(cluster_order.begin(), cluster_order.end(), 0);
     if (first_list) {
@@ -52,6 +48,33 @@ static void query_single_inverted_list(
             return summary_scores[a] > summary_scores[b];
         });
     }
+    return cluster_order;
+}
+
+void query_single_inverted_list(const SparseVectors* vectors,
+                                const InvertedListClusters& cluster_invlist,
+                                const std::vector<uint8_t>& dense,
+                                float heap_factor, bool first_list,
+                                const SearchParameters* search_parameters,
+                                TopKHolder<idx_t>& heap,
+                                absl::flat_hash_set<idx_t>& visited) {
+    // Skip empty clusters
+    size_t csize = cluster_invlist.cluster_size();
+    if (csize == 0) {
+        return;
+    }
+    const IDSelector* id_selector = search_parameters == nullptr
+                                        ? nullptr
+                                        : search_parameters->get_id_selector();
+    const auto element_size = vectors->get_element_size();
+    const auto& summaries = cluster_invlist.summaries();
+    // compute dp with all summaries
+    std::vector<float> summary_scores =
+        calculate_summary_scores(element_size, &summaries, dense);
+    size_t num_vectors = vectors->num_vectors();
+
+    std::vector<size_t> cluster_order =
+        reorder_clusters(summary_scores, first_list);
 
     const auto* indptr = vectors->indptr_data();
     const auto* indices = vectors->indices_data();
@@ -80,6 +103,9 @@ static void query_single_inverted_list(
             if (!inserted) {
                 continue;
             }
+            if (id_selector != nullptr && !id_selector->is_member(doc_id)) {
+                continue;
+            }
             const idx_t start = indptr[doc_id];
             const size_t len = indptr[doc_id + 1] - start;
             float score = 0;
@@ -100,6 +126,8 @@ static void query_single_inverted_list(
         }
     }
 }
+}  // namespace
+
 SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex(int dim)
     : Index(dim) {}
 
@@ -136,8 +164,7 @@ void SeismicScalarQuantizedIndex::add(idx_t n, const idx_t* indptr,
 // use Index's quantizer, if it's SeismicSQSearchParameters, construct
 // quantizer using SeismicSQSearchParameters's parameters
 std::vector<uint8_t> SeismicScalarQuantizedIndex::encode(
-    const float* values, size_t nnz,
-    const SearchParameters* search_parameters) {
+    const float* values, size_t nnz, SearchParameters* search_parameters) {
     const size_t element_size = sq_.bytes_per_value();
     std::vector<uint8_t> codes(nnz * element_size);
     if (typeid(*search_parameters) == typeid(SeismicSearchParameters)) {
@@ -178,9 +205,10 @@ void SeismicScalarQuantizedIndex::build() {
     }
 }
 
-auto SeismicScalarQuantizedIndex::search(
-    idx_t n, const idx_t* indptr, const term_t* indices, const float* values,
-    int k, const SearchParameters* search_parameters)
+auto SeismicScalarQuantizedIndex::search(idx_t n, const idx_t* indptr,
+                                         const term_t* indices,
+                                         const float* values, int k,
+                                         SearchParameters* search_parameters)
     -> pair_of_score_id_vectors_t {
     throw_if_null(search_parameters, "search parameters cannot be null!");
     if (vectors_ == nullptr || n == 0) {
@@ -239,7 +267,8 @@ auto SeismicScalarQuantizedIndex::search(
         }
 
         auto [distances, labels] =
-            single_query(dense, cuts, k, parameters->heap_factor, query_sq);
+            single_query(dense, cuts, k, parameters->heap_factor, query_sq,
+                         search_parameters);
         result_distances[query_idx] = std::move(distances);
         result_labels[query_idx] = std::move(labels);
     }
@@ -249,8 +278,8 @@ auto SeismicScalarQuantizedIndex::search(
 
 auto SeismicScalarQuantizedIndex::single_query(
     const std::vector<uint8_t>& dense, const std::vector<term_t>& cuts, int k,
-    float heap_factor, const ScalarQuantizer& query_sq)
-    -> pair_of_score_id_vector_t {
+    float heap_factor, const ScalarQuantizer& query_sq,
+    SearchParameters* search_parameters) -> pair_of_score_id_vector_t {
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
         return {{}, {}};
@@ -265,7 +294,8 @@ auto SeismicScalarQuantizedIndex::single_query(
         }
         const auto& cluster_invlist = clustered_inverted_lists[term];
         query_single_inverted_list(vectors_.get(), cluster_invlist, dense,
-                                   holder, visited, heap_factor, first_list);
+                                   heap_factor, first_list, search_parameters,
+                                   holder, visited);
         first_list = false;
     }
 

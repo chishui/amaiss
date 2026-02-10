@@ -4,9 +4,11 @@
 
 #include <map>
 #include <random>
+#include <unordered_set>
 #include <vector>
 
 #include "amaiss/cluster/inverted_list_clusters.h"
+#include "amaiss/id_selector.h"
 #include "amaiss/index.h"
 #include "amaiss/io/buffered_io.h"
 #include "amaiss/io/index_io.h"
@@ -670,6 +672,41 @@ TEST(SeismicSQIndexSearch, heap_factor_controls_result_count_large_dataset) {
     EXPECT_GT(count_small, 0);
     EXPECT_EQ(count_large, kDocCount);
     EXPECT_LE(count_small, count_large);
+}
+
+// ============== IDSelector tests ==============
+
+TEST(SeismicSQIndexSearch, search_with_id_selector_filters_results) {
+    TestableSeismicSQIndex index(QuantizerType::QT_8bit, 0.0F, 1.0F, 10, 3,
+                                 0.5F, 3);
+    Index* idx = &index;
+
+    // doc0: term0=0.3, doc1: term0=1.0, doc2: term0=0.5
+    index.add_docs({{{0, 0.3F}}, {{0, 1.0F}}, {{0, 0.5F}}});
+    index.build();
+
+    // Only allow doc0 and doc2 via IDSelector
+    std::vector<idx_t> allowed_ids = {0, 2};
+    SetIDSelector selector(allowed_ids.size(), allowed_ids.data());
+
+    SeismicSearchParameters params(5, 1.0F);
+    params.set_id_selector(&selector);
+
+    std::vector<idx_t> query_indptr = {0, 1};
+    std::vector<term_t> query_indices = {0};
+    std::vector<float> query_values = {1.0F};
+    std::vector<idx_t> labels(3, -1);
+    std::vector<float> distances(3, -1.0F);
+
+    idx->search(1, query_indptr.data(), query_indices.data(),
+                query_values.data(), 3, distances.data(), labels.data(),
+                &params);
+
+    // doc1 (highest score) should be excluded
+    // Results: doc2, doc0, then padding
+    EXPECT_EQ(labels[0], 2);
+    EXPECT_EQ(labels[1], 0);
+    EXPECT_EQ(labels[2], -1);
 }
 
 }  // namespace

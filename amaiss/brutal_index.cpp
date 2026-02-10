@@ -36,7 +36,7 @@ void BrutalIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
 
 auto BrutalIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                          const float* values, int k,
-                         const SearchParameters* search_parameters)
+                         SearchParameters* search_parameters)
     -> pair_of_score_id_vectors_t {
     if (vectors_ == nullptr || n == 0) {
         return {std::vector<std::vector<float>>(n),

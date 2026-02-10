@@ -4,12 +4,29 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "amaiss/id_selector.h"
 #include "amaiss/index.h"
 #include "amaiss/io/io.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
 namespace amaiss {
+
+class IDSelectorWithIDMap : public IDSelector {
+public:
+    IDSelectorWithIDMap(const IDSelector* id_selector,
+                        const std::vector<idx_t>& id_maps)
+        : delegate_(id_selector), id_map_(id_maps) {}
+
+    bool is_member(idx_t id) const override {
+        return delegate_->is_member(id_map_[id]);
+    }
+
+private:
+    const IDSelector* delegate_;
+    const std::vector<idx_t>& id_map_;
+};
+
 class IDMapIndex : public Index, public IndexIO {
 public:
     IDMapIndex() = default;
@@ -22,7 +39,7 @@ public:
     void build() override;
     void search(idx_t n, const idx_t* indptr, const term_t* indices,
                 const float* values, int k, float* distances, idx_t* labels,
-                const SearchParameters* search_parameters = nullptr) override;
+                SearchParameters* search_parameters = nullptr) override;
     const SparseVectors* get_vectors() const override;
 
     void add_with_ids(idx_t n, const idx_t* indptr, const term_t* indices,

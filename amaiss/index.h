@@ -2,9 +2,8 @@
 #define INDEX_H
 
 #include <array>
-#include <utility>
-#include <vector>
 
+#include "amaiss/id_selector.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
@@ -12,6 +11,11 @@ namespace amaiss {
 
 struct SearchParameters {
     virtual ~SearchParameters() = default;
+    const IDSelector* get_id_selector() const { return id_selector; }
+    void set_id_selector(IDSelector* selector) { id_selector = selector; }
+
+private:
+    IDSelector* id_selector = nullptr;
 };
 
 class Index {
@@ -22,11 +26,10 @@ public:
     virtual void add(idx_t n, const idx_t* indptr, const term_t* indices,
                      const float* values) = 0;
     virtual void build();
-    virtual void search(idx_t n, const idx_t* indptr, const term_t* indices,
-                        const float* values, int k, float* distances,
-                        idx_t* labels,
-                        const SearchParameters* search_parameters =
-                            nullptr);  // Pre-allocated: n * k
+    virtual void search(
+        idx_t n, const idx_t* indptr, const term_t* indices,
+        const float* values, int k, float* distances, idx_t* labels,
+        SearchParameters* search_parameters = nullptr);  // Pre-allocated: n * k
     virtual const SparseVectors* get_vectors() const = 0;
 
     int get_dimension() const { return dimension_; }
@@ -41,7 +44,7 @@ public:
 protected:
     virtual auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                         const float* values, int k,
-                        const SearchParameters* search_parameters = nullptr)
+                        SearchParameters* search_parameters = nullptr)
         -> pair_of_score_id_vectors_t;
 
     int dimension_;

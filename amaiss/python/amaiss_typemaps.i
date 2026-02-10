@@ -219,7 +219,7 @@
 
 // Multi-argument typemap for search with distances, labels, followed by SearchParameters
 // For member functions, self is arg 1, so distances is arg 7, labels is arg 8, search_parameters is arg 9
-%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, float* distances, amaiss::idx_t* labels, const amaiss::SearchParameters* search_parameters) {
+%typemap(check) (amaiss::idx_t n, const amaiss::idx_t* indptr, const amaiss::term_t* indices, const float* values, int k, float* distances, amaiss::idx_t* labels, amaiss::SearchParameters* search_parameters) {
     n_store8 = $1;  // n
     k_store8 = $5;  // k
     $6 = (float*)malloc($1 * $5 * sizeof(float));

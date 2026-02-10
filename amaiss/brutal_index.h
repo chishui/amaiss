@@ -25,7 +25,7 @@ public:
 protected:
     auto search(idx_t n, const idx_t* indptr, const term_t* indices,
                 const float* values, int k,
-                const SearchParameters* search_parameters = nullptr)
+                SearchParameters* search_parameters = nullptr)
         -> pair_of_score_id_vectors_t override;
     const SparseVectors* get_vectors() const override;
 

@@ -10,6 +10,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/cluster/random_kmeans.h"
+#include "amaiss/id_selector.h"
 #include "amaiss/index.h"
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/io/seismic_invlists_writer.h"
@@ -29,14 +30,18 @@ constexpr int kElementSize = U32;
 void query_single_inverted_list(const SparseVectors* vectors,
                                 const InvertedListClusters& cluster_invlist,
                                 const std::vector<float>& dense,
+                                const float heap_factor, const bool first_list,
+                                const SearchParameters* search_parameters,
                                 TopKHolder<idx_t>& heap,
-                                absl::flat_hash_set<idx_t>& visited,
-                                float heap_factor, bool first_list) {
+                                absl::flat_hash_set<idx_t>& visited) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
     if (csize == 0) {
         return;
     }
+    const IDSelector* id_selector = search_parameters == nullptr
+                                        ? nullptr
+                                        : search_parameters->get_id_selector();
     const auto& summaries = cluster_invlist.summaries();
     // compute dp with all summaries
     auto summary_scores =
@@ -74,6 +79,9 @@ void query_single_inverted_list(const SparseVectors* vectors,
             }
             auto [_, inserted] = visited.insert(doc_id);
             if (!inserted) {
+                continue;
+            }
+            if (id_selector != nullptr && !id_selector->is_member(doc_id)) {
                 continue;
             }
             const idx_t start = indptr[doc_id];
@@ -131,7 +139,7 @@ void SeismicIndex::build() {
 
 auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                           const float* values, int k,
-                          const SearchParameters* search_parameters)
+                          SearchParameters* search_parameters)
     -> pair_of_score_id_vectors_t {
     if (vectors_ == nullptr || n == 0) {
         return {std::vector<std::vector<float>>(n),
@@ -167,8 +175,8 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
         const size_t len = query_indptr[query_idx + 1] - start;
         const auto& cuts = top_k_tokens(
             query_indices + start, query_values + start, len, parameters->cut);
-        auto [distances, labels] =
-            single_query(dense, cuts, k, parameters->heap_factor);
+        auto [distances, labels] = single_query(
+            dense, cuts, k, parameters->heap_factor, search_parameters);
         result_distances[query_idx] = std::move(distances);
         result_labels[query_idx] = std::move(labels);
     }
@@ -187,7 +195,8 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
  */
 auto SeismicIndex::single_query(const std::vector<float>& dense,
                                 const std::vector<term_t>& cuts, int k,
-                                float heap_factor)
+                                float heap_factor,
+                                SearchParameters* search_parameters)
     -> pair_of_score_id_vector_t {
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
@@ -203,7 +212,8 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
         }
         const auto& cluster_invlist = clustered_inverted_lists[term];
         query_single_inverted_list(vectors_.get(), cluster_invlist, dense,
-                                   holder, visited, heap_factor, first_list);
+                                   heap_factor, first_list, search_parameters,
+                                   holder, visited);
         first_list = false;
     }
 

@@ -1,5 +1,7 @@
 #include "amaiss/id_map_index.h"
 
+#include <memory>
+
 #include "amaiss/io/index_io.h"
 #include "amaiss/io/io.h"
 #include "amaiss/utils/checks.h"
@@ -16,8 +18,16 @@ void IDMapIndex::build() { delegate_->build(); }
 
 void IDMapIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                         const float* values, int k, float* distances,
-                        idx_t* labels,
-                        const SearchParameters* search_parameters) {
+                        idx_t* labels, SearchParameters* search_parameters) {
+    std::unique_ptr<IDSelectorWithIDMap> id_selector_idmap = nullptr;
+    if (search_parameters != nullptr) {
+        auto* id_selector = search_parameters->get_id_selector();
+        if (id_selector != nullptr) {
+            id_selector_idmap = std::make_unique<IDSelectorWithIDMap>(
+                id_selector, internal_to_external_);
+            search_parameters->set_id_selector(id_selector_idmap.get());
+        }
+    }
     delegate_->search(n, indptr, indices, values, k, distances, labels,
                       search_parameters);
     for (int i = 0; i < n; ++i) {

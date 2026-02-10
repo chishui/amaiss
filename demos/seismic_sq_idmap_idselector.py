@@ -7,6 +7,25 @@ import numpy as np
 import amaiss
 
 
+def search(index, k, params):
+    # Query vectors
+    n_queries = 2
+    query_indptr = np.array([0, 2, 4], dtype=np.int32)
+    query_indices = np.array([0, 50, 5, 15], dtype=np.uint16)
+    query_values = np.array([1.0, 0.5, 1.5, 0.8], dtype=np.float32)
+    # Perform search
+    distances, labels = index.search(
+        n_queries, query_indptr, query_indices, query_values, k, params
+    )
+
+    print(f"\nTop {k} nearest neighbors:")
+    print(f"Labels shape: {labels.shape}")
+    for i in range(n_queries):
+        neighbors = labels[i]
+        scores = distances[i]
+        print(f"Query {i}: {neighbors}, scores: {scores}")
+
+
 def main():
     # Example: sparse vectors in CSR format
     # indptr: pointer array indicating where each vector starts/ends
@@ -64,27 +83,18 @@ def main():
     index.build()
     print("Index built successfully")
 
-    # Query vectors
-    n_queries = 2
-    query_indptr = np.array([0, 2, 4], dtype=np.int32)
-    query_indices = np.array([0, 50, 5, 15], dtype=np.uint16)
-    query_values = np.array([1.0, 0.5, 1.5, 0.8], dtype=np.float32)
-
     k = 3  # Find top 3 nearest neighbors
 
     # Create search parameters
     params = amaiss.SeismicSearchParameters(k, 1.2)
-    # Perform search
-    distances, labels = index.search(
-        n_queries, query_indptr, query_indices, query_values, k, params
-    )
+    ids = np.array([3, 6, 9], dtype=np.int32)
+    include = amaiss.SetIDSelector(ids)
+    params.set_id_selector(include)
+    search(index, k, params)
 
-    print(f"\nTop {k} nearest neighbors:")
-    print(f"Labels shape: {labels.shape}")
-    for i in range(n_queries):
-        neighbors = labels[i]
-        scores = distances[i]
-        print(f"Query {i}: {neighbors}, scores: {scores}")
+    exclude = amaiss.NotIDSelector(include)
+    params.set_id_selector(exclude)
+    search(index, k, params)
 
 
 if __name__ == "__main__":
