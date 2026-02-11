@@ -65,10 +65,15 @@ void query_single_inverted_list(const SparseVectors* vectors,
         }
         const auto& docs = cluster_invlist.get_docs(cluster_id);
         const size_t n_docs = docs.size();
+        static constexpr size_t kPrefetchDist1 = 2;  // vector data prefetch
+        static constexpr size_t kPrefetchDist2 = 4;  // indptr prefetch
         for (size_t i = 0; i < n_docs; ++i) {
             const auto& doc_id = docs[i];
-            if (i + 1 < n_docs) {
-                const idx_t next_doc = docs[i + 1];
+            if (i + kPrefetchDist2 < n_docs) {
+                detail::prefetch_indptr(indptr, docs[i + kPrefetchDist2]);
+            }
+            if (i + kPrefetchDist1 < n_docs) {
+                const idx_t next_doc = docs[i + kPrefetchDist1];
                 const idx_t next_start = indptr[next_doc];
                 const size_t next_len = indptr[next_doc + 1] - next_start;
                 detail::prefetch_vector(indices + next_start,

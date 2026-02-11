@@ -30,6 +30,10 @@ inline void prefetch_vector(const term_t* indices, const T* values,
     }
 }
 
+inline void prefetch_indptr(const idx_t* indptr, idx_t doc_id) {
+    AMAISS_PREFETCH(&indptr[doc_id], 0, 0);
+}
+
 }  // namespace amaiss::detail
 
 #endif  // PREFETCH_H

@@ -1,11 +1,9 @@
 #include <benchmark/benchmark.h>
 
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,7 +11,7 @@
 #include "amaiss/index.h"
 #include "amaiss/index_factory.h"
 #include "amaiss/io/index_io.h"
-#include "amaiss/seismic_scalar_quantized_index.h"
+#include "amaiss/seismic_index.h"
 #include "amaiss/types.h"
 
 namespace {
@@ -40,7 +38,6 @@ CSRMatrix read_csr(const std::string& path) {
     m.ncol = sizes[1];
     m.nnz = sizes[2];
 
-    // indptr: int64 in file -> idx_t (int32)
     std::vector<int64_t> indptr64(m.nrow + 1);
     f.read(reinterpret_cast<char*>(indptr64.data()),
            static_cast<std::streamsize>((m.nrow + 1) * sizeof(int64_t)));
@@ -49,7 +46,6 @@ CSRMatrix read_csr(const std::string& path) {
         m.indptr[i] = static_cast<amaiss::idx_t>(indptr64[i]);
     }
 
-    // indices: int32 in file -> term_t (uint16)
     std::vector<int32_t> indices32(m.nnz);
     f.read(reinterpret_cast<char*>(indices32.data()),
            static_cast<std::streamsize>(m.nnz * sizeof(int32_t)));
@@ -58,7 +54,6 @@ CSRMatrix read_csr(const std::string& path) {
         m.indices[i] = static_cast<amaiss::term_t>(indices32[i]);
     }
 
-    // values: float32
     m.data.resize(m.nnz);
     f.read(reinterpret_cast<char*>(m.data.data()),
            static_cast<std::streamsize>(m.nnz * sizeof(float)));
@@ -75,10 +70,9 @@ std::string get_env_or_die(const char* name) {
     return val;
 }
 
-// Singleton holder so the index is built once across all benchmark iterations.
-struct IndexFixture {
-    static IndexFixture& instance() {
-        static IndexFixture inst;
+struct SeismicIndexFixture {
+    static SeismicIndexFixture& instance() {
+        static SeismicIndexFixture inst;
         return inst;
     }
 
@@ -86,34 +80,28 @@ struct IndexFixture {
     CSRMatrix query;
 
 private:
-    IndexFixture() {
+    SeismicIndexFixture() {
         std::string data_path = get_env_or_die("AMAISS_DATA_CSR");
         std::string query_path = get_env_or_die("AMAISS_QUERY_CSR");
-        std::string dat_path = data_path + ".seismic_sq.dat";
+        std::string dat_path = data_path + ".seismic.dat";
 
         std::cout << "Loading query CSR: " << query_path << "\n";
         query = read_csr(query_path);
         std::cout << "  rows=" << query.nrow << " cols=" << query.ncol
                   << " nnz=" << query.nnz << "\n";
 
-        // Try loading a pre-built index from dat file
         std::ifstream dat_check(dat_path, std::ios::binary);
         if (dat_check.good()) {
             dat_check.close();
             std::cout << "Found pre-built index: " << dat_path << "\n";
             index = amaiss::read_index(const_cast<char*>(dat_path.c_str()));
-            std::cout << "index: "
-                      << std::string(index->id().data(), index->id().size())
-                      << "\n";
         } else {
             std::cout << "Loading data CSR: " << data_path << "\n";
             CSRMatrix data = read_csr(data_path);
             std::cout << "  rows=" << data.nrow << " cols=" << data.ncol
                       << " nnz=" << data.nnz << "\n";
 
-            std::string desc =
-                "seismic_sq,quantizer=8bit|vmin=0.0|vmax=3.0|lambda=6000|"
-                "beta=400|alpha=0.4";
+            std::string desc = "seismic,lambda=6000|beta=400|alpha=0.4";
             index = amaiss::index_factory(static_cast<int>(data.ncol),
                                           desc.c_str());
 
@@ -136,13 +124,12 @@ private:
 
 }  // namespace
 
-static void BM_SeismicSQ_Search(benchmark::State& state) {
-    auto& fix = IndexFixture::instance();
+static void BM_Seismic_Search(benchmark::State& state) {
+    auto& fix = SeismicIndexFixture::instance();
     const int k = static_cast<int>(state.range(0));
     const int n_queries = static_cast<int>(fix.query.nrow);
 
-    amaiss::SeismicSearchParameters params(/*cut=*/3,
-                                           /*heap_factor=*/1.0F);
+    amaiss::SeismicSearchParameters params(/*cut=*/3, /*heap_factor=*/1.0F);
 
     std::vector<float> distances(static_cast<size_t>(n_queries * k));
     std::vector<amaiss::idx_t> labels(static_cast<size_t>(n_queries * k));
@@ -164,13 +151,11 @@ static void BM_SeismicSQ_Search(benchmark::State& state) {
                            benchmark::Counter::kIsIterationInvariantRate);
 }
 
-// k=10
-BENCHMARK(BM_SeismicSQ_Search)
+BENCHMARK(BM_Seismic_Search)
     ->Arg(10)
     ->Unit(benchmark::kMillisecond)
     ->Repetitions(10);
-// k=100
-BENCHMARK(BM_SeismicSQ_Search)
+BENCHMARK(BM_Seismic_Search)
     ->Arg(100)
     ->Unit(benchmark::kMillisecond)
     ->Repetitions(10);
