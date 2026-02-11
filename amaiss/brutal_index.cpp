@@ -66,7 +66,7 @@ auto BrutalIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
 
 auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
     -> pair_of_score_id_vector_t {
-    DedupeTopKHolder<idx_t> holder(k);
+    detail::DedupeTopKHolder<idx_t> holder(k);
     size_t num_docs = vectors_->num_vectors();
     if (num_docs == 0) {
         return {{}, {}};
@@ -78,8 +78,8 @@ auto BrutalIndex::single_query(const std::vector<float>& dense, int k)
     for (size_t i = 0; i < num_docs; ++i) {
         const idx_t start = indptr[i];
         const size_t len = indptr[i + 1] - start;
-        float score = dot_product_float_dense(indices + start, values + start,
-                                              len, dense.data());
+        float score = detail::dot_product_float_dense(
+            indices + start, values + start, len, dense.data());
         holder.add(score, static_cast<idx_t>(i));
     }
     auto [labels, scores] =

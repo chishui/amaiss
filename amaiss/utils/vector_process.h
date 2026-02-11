@@ -1,13 +1,11 @@
 #ifndef VECTOR_PROCESS_H
 #define VECTOR_PROCESS_H
-#include <algorithm>
 #include <vector>
 
-#include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/ranker.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 template <class T>
 inline std::vector<term_t> top_k_tokens(const term_t* indices, const T* weights,
                                         int size, int k) {
@@ -22,6 +20,6 @@ inline std::vector<term_t> top_k_tokens(const term_t* indices, const T* weights,
     return holder.top_k_descending();
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // VECTOR_PROCESS_H

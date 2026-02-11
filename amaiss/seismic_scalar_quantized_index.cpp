@@ -33,7 +33,7 @@ void query_single_inverted_list(const SparseVectors* vectors,
                                 const std::vector<uint8_t>& dense,
                                 float heap_factor, bool first_list,
                                 const SearchParameters* search_parameters,
-                                TopKHolder<idx_t>& heap,
+                                detail::TopKHolder<idx_t>& heap,
                                 absl::flat_hash_set<idx_t>& visited) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
@@ -73,8 +73,8 @@ void query_single_inverted_list(const SparseVectors* vectors,
                 const idx_t next_doc = docs[i + 1];
                 const idx_t next_start = indptr[next_doc];
                 const size_t next_len = indptr[next_doc + 1] - next_start;
-                prefetch_vector(indices + next_start, values + next_start,
-                                next_len);
+                detail::prefetch_vector(indices + next_start,
+                                        values + next_start, next_len);
             }
             auto [_, inserted] = visited.insert(doc_id);
             if (!inserted) {
@@ -161,7 +161,7 @@ void SeismicScalarQuantizedIndex::build() {
         auto& invlist = (*inverted_lists)[idx];
         const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
         InvertedListClusters inverted_list_clusters(
-            RandomKMeans::train(vectors_.get(), doc_ids, beta_));
+            detail::RandomKMeans::train(vectors_.get(), doc_ids, beta_));
         inverted_list_clusters.summarize(vectors_.get(), alpha_);
         clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
         invlist.clear();
@@ -228,15 +228,15 @@ auto SeismicScalarQuantizedIndex::search(idx_t n, const idx_t* indptr,
         std::vector<term_t> cuts;
         if (element_size == U16) {
             // start is element index, need byte offset for uint16_t access
-            cuts = top_k_tokens<uint16_t>(
+            cuts = detail::top_k_tokens<uint16_t>(
                 query_indices + start,
                 reinterpret_cast<const uint16_t*>(query_values +
                                                   start * sizeof(uint16_t)),
                 len, parameters->cut);
         } else {
-            cuts = top_k_tokens<uint8_t>(query_indices + start,
-                                         query_values + start, len,
-                                         parameters->cut);
+            cuts = detail::top_k_tokens<uint8_t>(query_indices + start,
+                                                 query_values + start, len,
+                                                 parameters->cut);
         }
 
         auto [distances, labels] =
@@ -259,7 +259,7 @@ auto SeismicScalarQuantizedIndex::single_query(
     }
     absl::flat_hash_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
-    TopKHolder<idx_t> holder(k);
+    detail::TopKHolder<idx_t> holder(k);
     bool first_list = true;
     for (const auto& term : cuts) {
         if (term >= clustered_inverted_lists.size()) [[unlikely]] {

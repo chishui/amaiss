@@ -12,7 +12,7 @@
 #include "amaiss/utils/dense_vector_matrix.h"
 #include "amaiss/utils/prefetch.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 
 // Scalar fallback for argmax
 inline size_t argmax_scalar_sve(const std::vector<float>& values) {
@@ -432,6 +432,6 @@ inline auto dot_product_uint16_vectors_dense(const SparseVectors* vectors,
     return results;
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // DISTANCE_SVE_H

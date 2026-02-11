@@ -29,7 +29,7 @@ amaiss::SparseVectors create_float_vectors(
 
 TEST(RandomKMeansTrain, throws_on_null_vectors) {
     std::vector<amaiss::idx_t> doc_ids = {0, 1};
-    ASSERT_THROW(amaiss::RandomKMeans::train(nullptr, doc_ids, 2),
+    ASSERT_THROW(amaiss::detail::RandomKMeans::train(nullptr, doc_ids, 2),
                  std::invalid_argument);
 }
 
@@ -37,7 +37,7 @@ TEST(RandomKMeansTrain, empty_doc_ids_returns_empty) {
     auto vectors = create_float_vectors({{0}}, {{1.0F}});
     std::vector<amaiss::idx_t> doc_ids = {};
 
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 2);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 2);
 
     ASSERT_TRUE(clusters.empty());
 }
@@ -46,7 +46,7 @@ TEST(RandomKMeansTrain, single_doc_single_cluster) {
     auto vectors = create_float_vectors({{0}}, {{1.0F}});
     std::vector<amaiss::idx_t> doc_ids = {0};
 
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 1);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 1);
 
     ASSERT_EQ(clusters.size(), 1);
     ASSERT_EQ(clusters[0].size(), 1);
@@ -58,7 +58,7 @@ TEST(RandomKMeansTrain, n_clusters_capped_to_n_docs) {
     std::vector<amaiss::idx_t> doc_ids = {0, 1};
 
     // Request more clusters than docs
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 10);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 10);
 
     // Should cap to 2 clusters
     ASSERT_EQ(clusters.size(), 2);
@@ -77,7 +77,7 @@ TEST(RandomKMeansTrain, zero_n_clusters_uses_sqrt) {
     std::vector<amaiss::idx_t> doc_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
     // n_clusters = 0 should use sqrt(9) = 3
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 0);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 0);
 
     ASSERT_EQ(clusters.size(), 3);
 }
@@ -88,7 +88,7 @@ TEST(RandomKMeansTrain, all_docs_assigned_no_duplicates_no_missing) {
 
     std::vector<amaiss::idx_t> doc_ids = {0, 1, 2, 3, 4};
 
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 2);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 2);
 
     // Collect all docs from clusters
     std::vector<amaiss::idx_t> all_docs;
@@ -117,7 +117,7 @@ TEST(RandomKMeansTrain, each_cluster_has_centroid_at_position_zero) {
 
     std::vector<amaiss::idx_t> doc_ids = {0, 1, 2, 3};
 
-    auto clusters = amaiss::RandomKMeans::train(&vectors, doc_ids, 2);
+    auto clusters = amaiss::detail::RandomKMeans::train(&vectors, doc_ids, 2);
 
     // Each cluster should have at least one element (the centroid)
     for (const auto& cluster : clusters) {

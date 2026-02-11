@@ -9,8 +9,8 @@
 #include "amaiss/types.h"
 #include "amaiss/utils/distance_simd.h"
 
-namespace amaiss {
-namespace detail {
+namespace amaiss::detail {
+
 inline std::vector<float> calculate_summary_scores(
     const size_t element_size, const SparseVectors* summaries,
     const std::vector<uint8_t>& dense) {
@@ -79,7 +79,6 @@ inline bool should_run_exact_match(const IDSelector* id_selector, int k,
     }
     return id_selector_enumerable->size() <= k;
 }
-}  // namespace detail
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // SEISMIC_COMMON_H

@@ -16,7 +16,7 @@
 #include "amaiss/utils/dense_vector_matrix.h"
 #endif
 
-namespace amaiss {
+namespace amaiss::detail {
 #if defined(__AVX512F__)
 
 template <typename T>
@@ -199,4 +199,4 @@ void map_docs_to_clusters(const SparseVectors* vectors,
 #endif
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail

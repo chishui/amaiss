@@ -34,7 +34,7 @@ void query_single_inverted_list(const SparseVectors* vectors,
                                 const std::vector<float>& dense,
                                 const float heap_factor, const bool first_list,
                                 const SearchParameters* search_parameters,
-                                TopKHolder<idx_t>& heap,
+                                detail::TopKHolder<idx_t>& heap,
                                 absl::flat_hash_set<idx_t>& visited) {
     // Skip empty clusters
     size_t csize = cluster_invlist.cluster_size();
@@ -47,7 +47,7 @@ void query_single_inverted_list(const SparseVectors* vectors,
     const auto& summaries = cluster_invlist.summaries();
     // compute dp with all summaries
     auto summary_scores =
-        dot_product_float_vectors_dense(&summaries, dense.data());
+        detail::dot_product_float_vectors_dense(&summaries, dense.data());
     size_t num_vectors = vectors->num_vectors();
 
     std::vector<size_t> cluster_order =
@@ -71,8 +71,8 @@ void query_single_inverted_list(const SparseVectors* vectors,
                 const idx_t next_doc = docs[i + 1];
                 const idx_t next_start = indptr[next_doc];
                 const size_t next_len = indptr[next_doc + 1] - next_start;
-                prefetch_vector(indices + next_start, values + next_start,
-                                next_len);
+                detail::prefetch_vector(indices + next_start,
+                                        values + next_start, next_len);
             }
             auto [_, inserted] = visited.insert(doc_id);
             if (!inserted) {
@@ -83,7 +83,7 @@ void query_single_inverted_list(const SparseVectors* vectors,
             }
             const idx_t start = indptr[doc_id];
             const size_t len = indptr[doc_id + 1] - start;
-            auto score = dot_product_float_dense(
+            auto score = detail::dot_product_float_dense(
                 indices + start, values + start, len, dense.data());
             heap.add(score, doc_id);
         }
@@ -127,7 +127,7 @@ void SeismicIndex::build() {
         auto& invlist = (*inverted_lists)[idx];
         const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
         InvertedListClusters inverted_list_clusters(
-            RandomKMeans::train(vectors_.get(), doc_ids, beta_));
+            detail::RandomKMeans::train(vectors_.get(), doc_ids, beta_));
         inverted_list_clusters.summarize(vectors_.get(), alpha_);
         clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
         invlist.clear();
@@ -182,7 +182,7 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
         const auto& dense = query_vectors.get_dense_vector_float(query_idx);
         const idx_t start = query_indptr[query_idx];
         const size_t len = query_indptr[query_idx + 1] - start;
-        const auto& cuts = top_k_tokens(
+        const auto& cuts = detail::top_k_tokens(
             query_indices + start, query_values + start, len, parameters->cut);
         auto [distances, labels] = single_query(
             dense, cuts, k, parameters->heap_factor, search_parameters);
@@ -213,7 +213,7 @@ auto SeismicIndex::single_query(const std::vector<float>& dense,
     }
     absl::flat_hash_set<idx_t> visited;
     visited.reserve(cuts.size() * 5000);
-    TopKHolder<idx_t> holder(k);
+    detail::TopKHolder<idx_t> holder(k);
     bool first_list = true;
     for (const auto& term : cuts) {
         if (term >= clustered_inverted_lists.size()) [[unlikely]] {

@@ -8,13 +8,13 @@
 #include "amaiss/types.h"
 #include "amaiss/utils/distance_simd.h"
 
-using amaiss::dot_product_float_dense;
-using amaiss::dot_product_uint16_dense;
-using amaiss::dot_product_uint8_dense;
 using amaiss::idx_t;
 using amaiss::SparseVectors;
 using amaiss::SparseVectorsConfig;
 using amaiss::term_t;
+using amaiss::detail::dot_product_float_dense;
+using amaiss::detail::dot_product_uint16_dense;
+using amaiss::detail::dot_product_uint8_dense;
 
 // dot_product_float_dense (raw pointer version) tests
 TEST(DotProductFloatDense, empty_vector) {
@@ -163,7 +163,8 @@ TEST(DotProductFloatDenseSparseVectors, empty_vectors) {
         SparseVectorsConfig{.element_size = 4, .dimension = 5});
     std::vector<float> dense = {1.0F, 2.0F, 3.0F, 4.0F, 5.0F};
 
-    auto results = dot_product_float_vectors_dense(&vectors, dense.data());
+    auto results =
+        amaiss::detail::dot_product_float_vectors_dense(&vectors, dense.data());
 
     ASSERT_TRUE(results.empty());
 }
@@ -181,7 +182,8 @@ TEST(DotProductFloatDenseSparseVectors, single_vector) {
 
     std::vector<float> dense = {0.0F, 4.0F, 0.0F, 5.0F, 0.0F};
 
-    auto results = dot_product_float_vectors_dense(&vectors, dense.data());
+    auto results =
+        amaiss::detail::dot_product_float_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 2.0*4.0 + 3.0*5.0 = 8 + 15 = 23
@@ -212,7 +214,8 @@ TEST(DotProductFloatDenseSparseVectors, multiple_vectors) {
 
     std::vector<float> dense = {1.0F, 2.0F, 3.0F, 4.0F};
 
-    auto results = dot_product_float_vectors_dense(&vectors, dense.data());
+    auto results =
+        amaiss::detail::dot_product_float_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 2);
     // Vector 0: 1.0*1.0 + 2.0*3.0 = 1 + 6 = 7
@@ -237,7 +240,8 @@ TEST(DotProductFloatDenseSparseVectors, skips_zero_dense_values) {
     // Dense has zero at index 1
     std::vector<float> dense = {5.0F, 0.0F, 7.0F, 0.0F};
 
-    auto results = dot_product_float_vectors_dense(&vectors, dense.data());
+    auto results =
+        amaiss::detail::dot_product_float_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 1.0*5.0 + 2.0*0.0 + 3.0*7.0 = 5 + 0 + 21 = 26
@@ -257,7 +261,7 @@ TEST(DotProductDenseTemplate, uint8_values) {
     std::vector<uint8_t> dense = {5, 0, 3, 0};
 
     auto results =
-        amaiss::dot_product_uint8_vectors_dense(&vectors, dense.data());
+        amaiss::detail::dot_product_uint8_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 10*5 + 20*3 = 50 + 60 = 110
@@ -278,8 +282,8 @@ TEST(DotProductDenseTemplate, uint16_values) {
 
     std::vector<uint16_t> dense = {0, 10, 0, 20};
 
-    auto results =
-        amaiss::dot_product_uint16_vectors_dense(&vectors, dense.data());
+    auto results = amaiss::detail::dot_product_uint16_vectors_dense(
+        &vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 100*10 + 200*20 = 1000 + 4000 = 5000
@@ -298,7 +302,7 @@ TEST(DotProductDenseTemplate, skips_zero_dense_values) {
     std::vector<uint8_t> dense = {10, 0, 30, 0};
 
     auto results =
-        amaiss::dot_product_uint8_vectors_dense(&vectors, dense.data());
+        amaiss::detail::dot_product_uint8_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 1);
     // 1*10 + 2*0 + 3*30 = 10 + 0 + 90 = 100
@@ -322,7 +326,7 @@ TEST(DotProductDenseTemplate, multiple_vectors) {
     std::vector<uint8_t> dense = {10, 20, 30};
 
     auto results =
-        amaiss::dot_product_uint8_vectors_dense(&vectors, dense.data());
+        amaiss::detail::dot_product_uint8_vectors_dense(&vectors, dense.data());
 
     ASSERT_EQ(results.size(), 2);
     // Vector 0: 1*10 + 2*20 = 10 + 40 = 50

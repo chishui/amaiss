@@ -6,7 +6,7 @@
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 
 /**
  * @brief sparse X dense (raw pointer version for hot paths)
@@ -97,6 +97,6 @@ inline auto dot_product_uint16_vectors_dense(const SparseVectors* vectors,
     return dot_product_vectors_dense<uint16_t>(vectors, dense);
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // DISTANCE_H

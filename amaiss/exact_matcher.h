@@ -3,12 +3,11 @@
 #include <vector>
 
 #include "amaiss/id_selector.h"
-#include "amaiss/index.h"
 #include "amaiss/seismic_common.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/utils/ranker.h"
-namespace amaiss {
-namespace detail {
+
+namespace amaiss::detail {
 
 class ExactMatcher {
 public:
@@ -19,7 +18,7 @@ public:
         const auto* indptr = vectors->indptr_data();
         const auto* indices = vectors->indices_data();
         const auto* values = vectors->values_data();
-        TopKHolder<idx_t> holder(k);
+        detail::TopKHolder<idx_t> holder(k);
         auto ids = id_selector->ordered_ids();
         for (auto doc_id : ids) {
             auto score = detail::compute_similarity(
@@ -49,7 +48,6 @@ public:
         return {result_distances, result_labels};
     }
 };
-}  // namespace detail
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // EXACT_MATCH_INDEX_H

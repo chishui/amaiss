@@ -13,8 +13,7 @@
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 
-namespace amaiss {
-namespace {
+namespace amaiss::detail {
 template <class T>
 struct TopKItem {
     float score;
@@ -22,7 +21,6 @@ struct TopKItem {
     bool operator<(const TopKItem& other) const { return score < other.score; }
     bool operator>(const TopKItem& other) const { return score > other.score; }
 };
-}  // namespace
 
 template <typename T, typename Comparator = std::greater<float>>
 class TopKHolder {
@@ -267,5 +265,5 @@ public:
     float peek_score() { return pq.top().score; }
 };
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 #endif

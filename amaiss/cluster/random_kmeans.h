@@ -5,9 +5,8 @@
 
 #include "amaiss/sparse_vectors.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 
-namespace {
 class ClusterRepresentatives {
 public:
     ClusterRepresentatives(size_t num_clusters, size_t sketch_size,
@@ -31,7 +30,6 @@ private:
     size_t num_clusters_;
     size_t sketch_size_;
 };
-}  // namespace
 
 class RandomKMeans {
 public:
@@ -42,6 +40,6 @@ public:
         size_t n_clusters);
 };
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // RANDOM_KMEANS_H

@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdlib>
 
-namespace amaiss {
+namespace amaiss::detail {
 
 #if defined(__AVX512F__)
 static constexpr int MATRIX_ALIGNMENT = 64;  // AVX512
@@ -48,6 +48,6 @@ private:
 // Alias for backward compatibility
 using DenseVectorMatrix = DenseVectorMatrixT<float>;
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // DENSE_VECTOR_MATRIX_H

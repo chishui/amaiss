@@ -9,7 +9,7 @@
     __builtin_prefetch(addr, rw, locality)
 #endif
 
-namespace amaiss {
+namespace amaiss::detail {
 
 template <class T>
 inline void prefetch_vector(const term_t* indices, const T* values,
@@ -30,6 +30,6 @@ inline void prefetch_vector(const term_t* indices, const T* values,
     }
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // PREFETCH_H

@@ -1,6 +1,8 @@
 # Copyright (c) amaiss authors
 # Benchmarks for amaiss library
-
+set(AMAISS_BENCHMARK_SRC
+    seismic_sq_search_benchmark.cpp
+)
 # Fetch Google Benchmark
 include(FetchContent)
 FetchContent_Declare(
@@ -17,9 +19,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 FetchContent_MakeAvailable(googlebenchmark)
-
-# Collect all benchmark source files
-file(GLOB AMAISS_BENCHMARK_SRC "*.cpp")
 
 if(AMAISS_BENCHMARK_SRC)
     find_package(OpenMP REQUIRED)

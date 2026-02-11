@@ -12,7 +12,7 @@
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 
 RandomKMeans::RandomKMeans() = default;
 
@@ -69,4 +69,4 @@ std::vector<std::vector<idx_t>> RandomKMeans::train(
     return clusters;
 }
 
-}  // namespace amaiss
+}  // namespace amaiss::detail

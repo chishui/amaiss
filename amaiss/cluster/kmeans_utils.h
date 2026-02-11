@@ -6,7 +6,7 @@
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
-namespace amaiss {
+namespace amaiss::detail {
 /**
  * @brief Map each document to its cluster based on the similarity between doc
  * and centroid.
@@ -19,6 +19,6 @@ namespace amaiss {
 void map_docs_to_clusters(const SparseVectors* vectors,
                           const std::vector<idx_t>& docs,
                           std::vector<std::vector<idx_t>>& clusters);
-}  // namespace amaiss
+}  // namespace amaiss::detail
 
 #endif  // KMEANS_UTILS_H
