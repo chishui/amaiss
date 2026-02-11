@@ -3,6 +3,7 @@
 
 set(AMAISS_TEST_SRC
     distance_test.cpp
+    exact_matcher_test.cpp
     id_map_index_test.cpp
     id_selector_test.cpp
     index_factory_test.cpp
@@ -14,6 +15,7 @@ set(AMAISS_TEST_SRC
     random_kmeans_test.cpp
     ranker_test.cpp
     scalar_quantizer_test.cpp
+    seismic_common_test.cpp
     seismic_index_test.cpp
     seismic_invlists_writer_test.cpp
     seismic_scalar_quantized_index_test.cpp

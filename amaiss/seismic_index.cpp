@@ -10,10 +10,12 @@
 #include "absl/container/flat_hash_set.h"
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/cluster/random_kmeans.h"
+#include "amaiss/exact_matcher.h"
 #include "amaiss/id_selector.h"
 #include "amaiss/index.h"
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/io/seismic_invlists_writer.h"
+#include "amaiss/seismic_common.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/checks.h"
@@ -48,13 +50,8 @@ void query_single_inverted_list(const SparseVectors* vectors,
         dot_product_float_vectors_dense(&summaries, dense.data());
     size_t num_vectors = vectors->num_vectors();
 
-    std::vector<size_t> cluster_order(summary_scores.size());
-    std::iota(cluster_order.begin(), cluster_order.end(), 0);
-    if (first_list) {
-        std::ranges::sort(cluster_order, [&](size_t a, size_t b) {
-            return summary_scores[a] > summary_scores[b];
-        });
-    }
+    std::vector<size_t> cluster_order =
+        detail::reorder_clusters(summary_scores, first_list);
 
     const auto& [indptr, indices, values] = vectors->get_all_data();
 
@@ -153,14 +150,26 @@ auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
     query_vectors.add_vectors(indptr, indptr_size, indices, nnz,
                               reinterpret_cast<const uint8_t*>(values),
                               nnz * kElementSize);
-    std::vector<std::vector<float>> result_distances(n);
-    std::vector<std::vector<idx_t>> result_labels(n);
 
     SeismicSearchParameters default_params;
     const auto* parameters =
         search_parameters != nullptr
             ? dynamic_cast<const SeismicSearchParameters*>(search_parameters)
             : &default_params;
+
+    // if filter ids size is <= k, just run exact match
+    if (search_parameters != nullptr &&
+        detail::should_run_exact_match(search_parameters->get_id_selector(), k,
+                                       &query_vectors)) {
+        return detail::ExactMatcher::search(
+            vectors_.get(),
+            dynamic_cast<const IDSelectorEnumerable*>(
+                search_parameters->get_id_selector()),
+            &query_vectors, kElementSize, k);
+    }
+
+    std::vector<std::vector<float>> result_distances(n);
+    std::vector<std::vector<idx_t>> result_labels(n);
     // For each query vector
     const auto* query_indptr = query_vectors.indptr_data();
     const auto* query_indices = query_vectors.indices_data();

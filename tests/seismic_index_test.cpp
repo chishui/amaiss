@@ -797,6 +797,37 @@ TEST(SeismicIndexIO, write_and_read_multiple_terms) {
 
 // ============== IDSelector tests ==============
 
+TEST(SeismicIndexSearch, search_exact_match_with_small_selector) {
+    TestableSeismicIndex index(10, 3, 0.5F, 3);
+    Index* idx = &index;
+
+    // doc0: term0=0.3, doc1: term0=1.0, doc2: term0=0.5, doc3: term0=0.8
+    index.add_docs({{{0, 0.3F}}, {{0, 1.0F}}, {{0, 0.5F}}, {{0, 0.8F}}});
+    index.build();
+
+    // Selector size (2) <= k (2), triggers exact match path
+    std::vector<idx_t> allowed_ids = {1, 3};
+    ArrayIDSelector selector(allowed_ids.size(), allowed_ids.data());
+
+    SeismicSearchParameters params(5, 1.0F);
+    params.set_id_selector(&selector);
+
+    std::vector<idx_t> query_indptr = {0, 1};
+    std::vector<term_t> query_indices = {0};
+    std::vector<float> query_values = {1.0F};
+    std::vector<idx_t> labels(2, -1);
+    std::vector<float> distances(2, -1.0F);
+
+    idx->search(1, query_indptr.data(), query_indices.data(),
+                query_values.data(), 2, distances.data(), labels.data(),
+                &params);
+
+    // Exact match should return doc1 (score 1.0) and doc3 (score 0.8)
+    EXPECT_EQ(labels[0], 1);
+    EXPECT_EQ(labels[1], 3);
+    EXPECT_GT(distances[0], distances[1]);
+}
+
 TEST(SeismicIndexSearch, search_with_id_selector_filters_results) {
     TestableSeismicIndex index(10, 3, 0.5F, 3);
     Index* idx = &index;

@@ -5,7 +5,7 @@
 
 #include "amaiss/types.h"
 
-// Mock infrastructure for __builtin_prefetch
+// Mock infrastructure for prefetch
 namespace prefetch_mock {
 std::vector<const void*> prefetched_addresses;
 int prefetch_rw = -1;
@@ -24,14 +24,35 @@ void record(const void* addr, int rw, int locality) {
 }
 }  // namespace prefetch_mock
 
-// Override __builtin_prefetch before including prefetch.h
-#define __builtin_prefetch(addr, rw, locality) \
+// Override AMAISS_PREFETCH before including prefetch.h
+#define AMAISS_PREFETCH(addr, rw, locality) \
     prefetch_mock::record(addr, rw, locality)
 
-// Now include the header with our mock
+// Force unique instantiations local to this TU by wrapping in anonymous
+// namespace. This avoids ODR conflicts with other TUs that use the real
+// __builtin_prefetch.
 #include "amaiss/utils/prefetch.h"
 
+namespace {
+
 using amaiss::term_t;
+
+template <class T>
+__attribute__((noinline)) void test_prefetch_vector(const term_t* indices,
+                                                    const T* values,
+                                                    size_t len) {
+    static constexpr size_t kCacheLineSize = 64;
+    const char* indices_ptr = reinterpret_cast<const char*>(indices);
+    const char* values_ptr = reinterpret_cast<const char*>(values);
+    const size_t indices_bytes = len * sizeof(term_t);
+    const size_t values_bytes = len * sizeof(T);
+    for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
+        AMAISS_PREFETCH(indices_ptr + offset, 0, 0);
+    }
+    for (size_t offset = 0; offset < values_bytes; offset += kCacheLineSize) {
+        AMAISS_PREFETCH(values_ptr + offset, 0, 0);
+    }
+}
 
 class PrefetchTest : public ::testing::Test {
 protected:
@@ -42,7 +63,7 @@ TEST_F(PrefetchTest, empty_vector_no_prefetch) {
     std::vector<term_t> indices;
     std::vector<float> values;
 
-    amaiss::prefetch_vector(indices.data(), values.data(), 0);
+    test_prefetch_vector(indices.data(), values.data(), 0);
 
     ASSERT_TRUE(prefetch_mock::prefetched_addresses.empty());
 }
@@ -52,7 +73,7 @@ TEST_F(PrefetchTest, small_vector_single_cacheline_each) {
     std::vector<term_t> indices(4);  // 4 * 2 = 8 bytes < 64
     std::vector<float> values(4);    // 4 * 4 = 16 bytes < 64
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     // Should prefetch once for indices, once for values
     ASSERT_EQ(prefetch_mock::prefetched_addresses.size(), 2);
@@ -64,7 +85,7 @@ TEST_F(PrefetchTest, prefetch_uses_read_hint) {
     std::vector<term_t> indices(4);
     std::vector<float> values(4);
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     ASSERT_EQ(prefetch_mock::prefetch_rw, 0);  // read
 }
@@ -73,7 +94,7 @@ TEST_F(PrefetchTest, prefetch_uses_no_temporal_locality) {
     std::vector<term_t> indices(4);
     std::vector<float> values(4);
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     ASSERT_EQ(prefetch_mock::prefetch_locality, 0);  // no temporal locality
 }
@@ -84,7 +105,7 @@ TEST_F(PrefetchTest, multiple_cachelines_for_indices) {
     std::vector<term_t> indices(100);
     std::vector<float> values(1);  // 4 bytes, 1 cache line
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     // indices: 100 * 2 = 200 bytes -> 4 prefetches (0, 64, 128, 192)
     // values: 100 * 4 = 400 bytes -> 7 prefetches
@@ -103,7 +124,7 @@ TEST_F(PrefetchTest, prefetch_addresses_are_cacheline_aligned_offsets) {
     std::vector<term_t> indices(len);
     std::vector<float> values(len);
 
-    amaiss::prefetch_vector(indices.data(), values.data(), len);
+    test_prefetch_vector(indices.data(), values.data(), len);
 
     // Should have 3 prefetches total: 1 for indices, 2 for values
     ASSERT_EQ(prefetch_mock::prefetched_addresses.size(), 3);
@@ -126,7 +147,7 @@ TEST_F(PrefetchTest, works_with_different_value_types) {
     std::vector<term_t> indices(64);
     std::vector<uint8_t> values(64);
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     ASSERT_EQ(prefetch_mock::prefetched_addresses.size(), 3);
 }
@@ -135,7 +156,9 @@ TEST_F(PrefetchTest, works_with_uint8_values) {
     std::vector<term_t> indices(32);  // 64 bytes -> 1 cache line
     std::vector<uint8_t> values(32);  // 32 bytes -> 1 cache line
 
-    amaiss::prefetch_vector(indices.data(), values.data(), indices.size());
+    test_prefetch_vector(indices.data(), values.data(), indices.size());
 
     ASSERT_EQ(prefetch_mock::prefetched_addresses.size(), 2);
 }
+
+}  // namespace

@@ -1,6 +1,8 @@
 #ifndef ID_MAP_INDEX_H
 #define ID_MAP_INDEX_H
+#include <algorithm>
 #include <array>
+#include <ranges>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -11,7 +13,7 @@
 #include "amaiss/types.h"
 
 namespace amaiss {
-
+namespace detail {
 class IDSelectorWithIDMap : public IDSelector {
 public:
     IDSelectorWithIDMap(const IDSelector* id_selector,
@@ -26,6 +28,42 @@ private:
     const IDSelector* delegate_;
     const std::vector<idx_t>& id_map_;
 };
+
+class IDSelectorEnumerableWithIDMap : public IDSelectorEnumerable {
+public:
+    IDSelectorEnumerableWithIDMap(
+        const IDSelectorEnumerable* id_selector,
+        const std::vector<idx_t>& id_maps,
+        const absl::flat_hash_map<idx_t, idx_t>& external_id_map)
+        : delegate_(id_selector),
+          internal_id_map_(id_maps),
+          external_id_map_(external_id_map) {}
+
+    bool is_member(idx_t id) const override {
+        return delegate_->is_member(internal_id_map_[id]);
+    }
+
+    std::vector<idx_t> ids() const override {
+        auto vec = delegate_->ids();
+        std::vector<idx_t> result;
+        result.reserve(vec.size());
+        for (const auto& id : vec) {
+            auto it = external_id_map_.find(id);
+            if (it != external_id_map_.end()) {
+                result.push_back(it->second);
+            }
+        }
+        return result;
+    }
+
+    size_t size() const override { return delegate_->size(); }
+
+private:
+    const IDSelectorEnumerable* delegate_;
+    const std::vector<idx_t>& internal_id_map_;
+    const absl::flat_hash_map<idx_t, idx_t>& external_id_map_;
+};
+}  // namespace detail
 
 class IDMapIndex : public Index, public IndexIO {
 public:

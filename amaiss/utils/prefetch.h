@@ -4,6 +4,11 @@
 
 #include "amaiss/types.h"
 
+#ifndef AMAISS_PREFETCH
+#define AMAISS_PREFETCH(addr, rw, locality) \
+    __builtin_prefetch(addr, rw, locality)
+#endif
+
 namespace amaiss {
 
 template <class T>
@@ -18,10 +23,10 @@ inline void prefetch_vector(const term_t* indices, const T* values,
     const size_t values_bytes = len * sizeof(T);
 
     for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
-        __builtin_prefetch(indices_ptr + offset, 0, 0);
+        AMAISS_PREFETCH(indices_ptr + offset, 0, 0);
     }
     for (size_t offset = 0; offset < values_bytes; offset += kCacheLineSize) {
-        __builtin_prefetch(values_ptr + offset, 0, 0);
+        AMAISS_PREFETCH(values_ptr + offset, 0, 0);
     }
 }
 

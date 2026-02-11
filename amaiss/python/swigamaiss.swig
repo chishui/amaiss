@@ -63,6 +63,7 @@ import_array();
 %ignore amaiss::SparseVectors::deserialize;
 %ignore amaiss::InvertedListClusters::serialize;
 %ignore amaiss::InvertedListClusters::deserialize;
+%ignore amaiss::detail; 
 
 // Ignore the protected std::vector-based methods
 %ignore amaiss::Index::add(idx_t, std::vector<idx_t>&, std::vector<term_t>&, std::vector<float>&);

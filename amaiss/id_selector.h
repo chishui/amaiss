@@ -1,11 +1,15 @@
 #ifndef ID_SELECTOR_H
 #define ID_SELECTOR_H
 
-#include <unordered_set>
+#include <cstddef>
+#include <ranges>
+#include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "amaiss/types.h"
 
 namespace amaiss {
+
 class IDSelector {
 public:
     virtual ~IDSelector() = default;
@@ -13,15 +17,52 @@ public:
     bool operator()(idx_t id) const { return is_member(id); }
 };
 
-class SetIDSelector : public IDSelector {
+class IDSelectorEnumerable : public IDSelector {
+public:
+    ~IDSelectorEnumerable() = default;
+    virtual std::vector<idx_t> ids() const = 0;
+    virtual std::vector<idx_t> ordered_ids() const {
+        auto vec = ids();
+        std::ranges::sort(vec.begin(), vec.end());
+        return vec;
+    }
+    virtual size_t size() const = 0;
+};
+
+class SetIDSelector : public IDSelectorEnumerable {
 public:
     explicit SetIDSelector(size_t n, const idx_t* indices) {
-        ids_ = std::unordered_set<idx_t>(indices, indices + n);
+        ids_ = absl::flat_hash_set<idx_t>(indices, indices + n);
     }
+
     bool is_member(idx_t id) const override { return ids_.contains(id); }
 
+    std::vector<idx_t> ids() const override {
+        return std::vector<idx_t>(ids_.begin(), ids_.end());
+    }
+
+    size_t size() const override { return ids_.size(); }
+
 private:
-    std::unordered_set<idx_t> ids_;
+    absl::flat_hash_set<idx_t> ids_;
+};
+
+class ArrayIDSelector : public IDSelectorEnumerable {
+public:
+    explicit ArrayIDSelector(size_t n, const idx_t* indices)
+        : ids_(indices, indices + n) {}
+
+    bool is_member(idx_t id) const override {
+        return std::find(ids_.begin(), ids_.end(), id) != ids_.end();
+    }
+
+    std::vector<idx_t> ids() const override {
+        return std::vector<idx_t>(ids_.begin(), ids_.end());
+    }
+    size_t size() const override { return ids_.size(); }
+
+private:
+    std::vector<idx_t> ids_;
 };
 
 class NotIDSelector : public IDSelector {

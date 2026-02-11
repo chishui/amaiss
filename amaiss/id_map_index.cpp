@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "amaiss/id_selector.h"
 #include "amaiss/io/index_io.h"
 #include "amaiss/io/io.h"
 #include "amaiss/utils/checks.h"
@@ -19,12 +20,22 @@ void IDMapIndex::build() { delegate_->build(); }
 void IDMapIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
                         const float* values, int k, float* distances,
                         idx_t* labels, SearchParameters* search_parameters) {
-    std::unique_ptr<IDSelectorWithIDMap> id_selector_idmap = nullptr;
+    std::unique_ptr<IDSelector> id_selector_idmap = nullptr;
     if (search_parameters != nullptr) {
-        auto* id_selector = search_parameters->get_id_selector();
+        const auto* id_selector = search_parameters->get_id_selector();
         if (id_selector != nullptr) {
-            id_selector_idmap = std::make_unique<IDSelectorWithIDMap>(
-                id_selector, internal_to_external_);
+            const auto* id_selector_enumerable =
+                dynamic_cast<const IDSelectorEnumerable*>(id_selector);
+            if (id_selector_enumerable != nullptr) {
+                id_selector_idmap =
+                    std::make_unique<detail::IDSelectorEnumerableWithIDMap>(
+                        id_selector_enumerable, internal_to_external_,
+                        external_to_internal_);
+            } else {
+                id_selector_idmap =
+                    std::make_unique<detail::IDSelectorWithIDMap>(
+                        id_selector, internal_to_external_);
+            }
             search_parameters->set_id_selector(id_selector_idmap.get());
         }
     }
