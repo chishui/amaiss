@@ -13,7 +13,8 @@ namespace {
 class IDMapIndexTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        seismic_ = new amaiss::SeismicIndex(10, 2, 0.5F, 100);
+        seismic_ = new amaiss::SeismicIndex(
+            100, {.lambda = 10, .beta = 2, .alpha = 0.5F});
         idmap_ = new amaiss::IDMapIndex(seismic_);
     }
 

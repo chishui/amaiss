@@ -1,15 +1,36 @@
 #ifndef SEISMIC_COMMON_H
 #define SEISMIC_COMMON_H
 
+#include <memory>
 #include <numeric>
 #include <vector>
 
+#include "amaiss/cluster/inverted_list_clusters.h"
+#include "amaiss/cluster/random_kmeans.h"
 #include "amaiss/id_selector.h"
+#include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 #include "amaiss/utils/distance_simd.h"
 
-namespace amaiss::detail {
+namespace amaiss {
+struct SeismicClusterParameters {
+    int lambda;
+    int beta;
+    float alpha;
+};
+
+namespace detail {
+
+constexpr int kDefaultLambda = -1;
+constexpr float kDefaultPostingPruneRatio = 0.0005F;
+constexpr int kDefaultPostingMinimumLength = 160;
+constexpr float kDefaultBetaRatio = 0.1F;
+constexpr int kDefaultBeta = -1;
+constexpr float kDefaultAlpha = 0.4F;
+
+constexpr SeismicClusterParameters kDefaultSeismicClusterParams = {
+    .lambda = kDefaultLambda, .beta = kDefaultBeta, .alpha = kDefaultAlpha};
 
 inline std::vector<float> calculate_summary_scores(
     const size_t element_size, const SparseVectors* summaries,
@@ -79,6 +100,50 @@ inline bool should_run_exact_match(const IDSelector* id_selector, int k,
     }
     return id_selector_enumerable->size() <= k;
 }
-}  // namespace amaiss::detail
+
+inline int calculate_lambda(int lambda, size_t n_vectors) {
+    if (lambda == kDefaultLambda) {
+        return std::max(static_cast<int>(kDefaultPostingPruneRatio *
+                                         static_cast<float>(n_vectors)),
+                        kDefaultPostingMinimumLength);
+    }
+    return lambda;
+}
+
+inline int calculate_beta(int beta, int lambda) {
+    if (beta == kDefaultBeta) {
+        return static_cast<int>(static_cast<float>(lambda) * kDefaultBetaRatio);
+    }
+    return beta;
+}
+
+inline std::vector<InvertedListClusters> build_inverted_lists_clusters(
+    const SparseVectors* vectors, const SparseVectorsConfig& config,
+    const SeismicClusterParameters& seismic_cluster_params) {
+    // build inverted index
+    std::unique_ptr<ArrayInvertedLists> inverted_lists =
+        ArrayInvertedLists::build_inverted_lists(config.dimension,
+                                                 config.element_size, vectors);
+    int lambda =
+        calculate_lambda(seismic_cluster_params.lambda, vectors->num_vectors());
+    int beta = calculate_beta(seismic_cluster_params.beta, lambda);
+    size_t inverted_lists_size = inverted_lists->size();
+    std::vector<InvertedListClusters> clustered_inverted_lists(
+        inverted_lists_size);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (size_t idx = 0; idx < inverted_lists_size; ++idx) {
+        auto& invlist = (*inverted_lists)[idx];
+        const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda);
+        InvertedListClusters inverted_list_clusters(
+            detail::RandomKMeans::train(vectors, doc_ids, beta));
+        inverted_list_clusters.summarize(vectors, seismic_cluster_params.alpha);
+        clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
+        invlist.clear();
+    }
+    return clustered_inverted_lists;
+}
+
+}  // namespace detail
+}  // namespace amaiss
 
 #endif  // SEISMIC_COMMON_H

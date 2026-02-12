@@ -11,6 +11,7 @@
 #include "amaiss/invlists/inverted_lists.h"
 #include "amaiss/index.h"
 #include "amaiss/brutal_index.h"
+#include "amaiss/seismic_common.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
 #include "amaiss/id_map_index.h"
@@ -100,6 +101,7 @@ import_array();
 
 %include "amaiss/index.h"
 %include "amaiss/brutal_index.h"
+%include "amaiss/seismic_common.h"
 %include "amaiss/seismic_index.h"
 %include "amaiss/seismic_scalar_quantized_index.h"
 %include "amaiss/id_map_index.h"

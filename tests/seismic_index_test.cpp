@@ -24,6 +24,9 @@ public:
     using SeismicIndex::add;
     using SeismicIndex::SeismicIndex;
 
+    TestableSeismicIndex(int lambda, int beta, float alpha, int dim)
+        : SeismicIndex(dim, {.lambda = lambda, .beta = beta, .alpha = alpha}) {}
+
     std::vector<InvertedListClusters>& get_clustered_inverted_lists() {
         return clustered_inverted_lists;
     }
@@ -137,18 +140,13 @@ TEST(SeismicIndexBuild, build_creates_summaries_for_clusters) {
 
 // ============== Constructor tests ==============
 
-TEST(SeismicIndexConstructor, default_constructor_sets_zero_dim) {
-    SeismicIndex index;
-    EXPECT_EQ(index.get_dimension(), 0);
-}
-
 TEST(SeismicIndexConstructor, constructor_with_dim_only) {
     SeismicIndex index(100);
     EXPECT_EQ(index.get_dimension(), 100);
 }
 
 TEST(SeismicIndexConstructor, constructor_with_all_params) {
-    SeismicIndex index(5, 3, 0.6F, 50);
+    SeismicIndex index(50, {.lambda = 5, .beta = 3, .alpha = 0.6F});
     EXPECT_EQ(index.get_dimension(), 50);
 }
 

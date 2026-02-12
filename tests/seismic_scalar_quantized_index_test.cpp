@@ -24,6 +24,12 @@ public:
     using SeismicScalarQuantizedIndex::add;
     using SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex;
 
+    TestableSeismicSQIndex(QuantizerType qt, float vmin, float vmax, int lambda,
+                           int beta, float alpha, int dim)
+        : SeismicScalarQuantizedIndex(
+              qt, vmin, vmax, {.lambda = lambda, .beta = beta, .alpha = alpha},
+              dim) {}
+
     std::vector<InvertedListClusters>& get_clustered_inverted_lists() {
         return clustered_inverted_lists;
     }
@@ -133,16 +139,18 @@ TEST(SeismicSQIndexConstructor, constructor_with_dim_only) {
 }
 
 TEST(SeismicSQIndexConstructor, constructor_with_all_params_8bit) {
-    SeismicScalarQuantizedIndex index(QuantizerType::QT_8bit, 0.0F, 1.0F, 5, 3,
-                                      0.6F, 50);
+    SeismicScalarQuantizedIndex index(QuantizerType::QT_8bit, 0.0F, 1.0F,
+                                      {.lambda = 5, .beta = 3, .alpha = 0.6F},
+                                      50);
     EXPECT_EQ(index.get_dimension(), 50);
     EXPECT_EQ(index.get_scalar_quantizer().get_quantizer_type(),
               QuantizerType::QT_8bit);
 }
 
 TEST(SeismicSQIndexConstructor, constructor_with_all_params_16bit) {
-    SeismicScalarQuantizedIndex index(QuantizerType::QT_16bit, 0.0F, 2.0F, 5, 3,
-                                      0.6F, 50);
+    SeismicScalarQuantizedIndex index(QuantizerType::QT_16bit, 0.0F, 2.0F,
+                                      {.lambda = 5, .beta = 3, .alpha = 0.6F},
+                                      50);
     EXPECT_EQ(index.get_dimension(), 50);
     EXPECT_EQ(index.get_scalar_quantizer().get_quantizer_type(),
               QuantizerType::QT_16bit);
@@ -219,8 +227,9 @@ TEST(SeismicSQSearchParameters, constructor_sets_values) {
 // ============== search() tests ==============
 
 TEST(SeismicSQIndexSearch, search_returns_empty_when_no_vectors) {
-    SeismicScalarQuantizedIndex index(QuantizerType::QT_8bit, 0.0F, 1.0F, 5, 2,
-                                      0.5F, 5);
+    SeismicScalarQuantizedIndex index(QuantizerType::QT_8bit, 0.0F, 1.0F,
+                                      {.lambda = 5, .beta = 2, .alpha = 0.5F},
+                                      5);
     Index* idx = &index;
 
     std::vector<idx_t> query_indptr = {0, 2};
@@ -463,8 +472,9 @@ TEST(SeismicSQIndexSearch, search_with_sq_search_parameters) {
 // ============== write_index/read_index tests ==============
 
 TEST(SeismicSQIndexIO, write_and_read_empty_index) {
-    SeismicScalarQuantizedIndex original(QuantizerType::QT_8bit, 0.0F, 1.0F, 5,
-                                         2, 0.5F, 100);
+    SeismicScalarQuantizedIndex original(
+        QuantizerType::QT_8bit, 0.0F, 1.0F,
+        {.lambda = 5, .beta = 2, .alpha = 0.5F}, 100);
 
     BufferedIOWriter writer;
     write_index(&original, &writer);

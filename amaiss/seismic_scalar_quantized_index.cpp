@@ -106,16 +106,14 @@ void query_single_inverted_list(const SparseVectors* vectors,
 }  // namespace
 
 SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex(int dim)
-    : Index(dim) {}
+    : Index(dim), cluster_parameter_(detail::kDefaultSeismicClusterParams) {}
 
 SeismicScalarQuantizedIndex::SeismicScalarQuantizedIndex(
-    QuantizerType quantizer_type, float vmin, float vmax, int lambda, int beta,
-    float alpha, int dim)
+    QuantizerType quantizer_type, float vmin, float vmax,
+    SeismicClusterParameters parameter, int dim)
     : Index(dim),
       sq_(quantizer_type, vmin, vmax),
-      lambda_(lambda),
-      beta_(beta),
-      alpha_(alpha) {}
+      cluster_parameter_(parameter) {}
 
 void SeismicScalarQuantizedIndex::add(idx_t n, const idx_t* indptr,
                                       const term_t* indices,
@@ -161,25 +159,11 @@ std::vector<uint8_t> SeismicScalarQuantizedIndex::encode(
 }
 
 void SeismicScalarQuantizedIndex::build() {
-    // build inverted index
-    std::unique_ptr<ArrayInvertedLists> inverted_lists =
-        ArrayInvertedLists::build_inverted_lists(
-            get_dimension(), sq_.bytes_per_value(), vectors_.get());
-
-    // TODO: generate lambda and beta
-    size_t num_inverted_lists = inverted_lists->size();
-    clustered_inverted_lists.clear();
-    clustered_inverted_lists.resize(num_inverted_lists);
-#pragma omp parallel for schedule(dynamic, 64)
-    for (size_t idx = 0; idx < num_inverted_lists; ++idx) {
-        auto& invlist = (*inverted_lists)[idx];
-        const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
-        InvertedListClusters inverted_list_clusters(
-            detail::RandomKMeans::train(vectors_.get(), doc_ids, beta_));
-        inverted_list_clusters.summarize(vectors_.get(), alpha_);
-        clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
-        invlist.clear();
-    }
+    clustered_inverted_lists = std::move(detail::build_inverted_lists_clusters(
+        vectors_.get(),
+        {.element_size = sq_.bytes_per_value(),
+         .dimension = static_cast<size_t>(get_dimension())},
+        cluster_parameter_));
 }
 
 auto SeismicScalarQuantizedIndex::search(idx_t n, const idx_t* indptr,

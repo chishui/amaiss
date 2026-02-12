@@ -6,6 +6,7 @@
 #include "amaiss/cluster/inverted_list_clusters.h"
 #include "amaiss/index.h"
 #include "amaiss/io/io.h"
+#include "amaiss/seismic_common.h"
 #include "amaiss/sparse_vectors.h"
 #include "amaiss/types.h"
 
@@ -26,8 +27,8 @@ class SeismicIndex : public Index, public IndexIO {
 public:
     static constexpr std::array<char, 4> name = {'S', 'E', 'I', 'S'};
 
-    explicit SeismicIndex(int dim = 0);
-    SeismicIndex(int lambda, int beta, float alpha, int dim = 0);
+    explicit SeismicIndex(int dim);
+    SeismicIndex(int dim, SeismicClusterParameters parameter);
     ~SeismicIndex() override = default;
     std::array<char, 4> id() const override { return name; }
 
@@ -58,9 +59,7 @@ private:
                       SearchParameters* search_parameters)
         -> pair_of_score_id_vector_t;
     std::unique_ptr<SparseVectors> vectors_;
-    int lambda_;
-    int beta_;
-    float alpha_;
+    SeismicClusterParameters cluster_parameter_;
 };
 }  // namespace amaiss
 

@@ -28,7 +28,7 @@ public:
     static constexpr std::array<char, 4> name = {'S', 'E', 'S', 'Q'};
     explicit SeismicScalarQuantizedIndex(int dim);
     SeismicScalarQuantizedIndex(QuantizerType quantizer_type, float vmin,
-                                float vmax, int lambda, int beta, float alpha,
+                                float vmax, SeismicClusterParameters parameter,
                                 int dim);
     ~SeismicScalarQuantizedIndex() override = default;
 
@@ -63,9 +63,7 @@ private:
         -> pair_of_score_id_vector_t;
     ScalarQuantizer sq_;
     std::unique_ptr<SparseVectors> vectors_;
-    int lambda_;
-    int beta_;
-    float alpha_;
+    SeismicClusterParameters cluster_parameter_;
 
 protected:
     std::vector<InvertedListClusters> clustered_inverted_lists;

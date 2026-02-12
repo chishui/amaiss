@@ -97,9 +97,9 @@ void query_single_inverted_list(const SparseVectors* vectors,
 }  // namespace
 
 SeismicIndex::SeismicIndex(int dim)
-    : Index(dim), lambda_(0), beta_(0), alpha_(0.4F) {}
-SeismicIndex::SeismicIndex(int lambda, int beta, float alpha, int dim)
-    : Index(dim), lambda_(lambda), beta_(beta), alpha_(alpha) {}
+    : Index(dim), cluster_parameter_(detail::kDefaultSeismicClusterParams) {}
+SeismicIndex::SeismicIndex(int dim, SeismicClusterParameters parameter)
+    : Index(dim), cluster_parameter_(parameter) {}
 
 void SeismicIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
                        const float* values) {
@@ -119,24 +119,11 @@ void SeismicIndex::add(idx_t n, const idx_t* indptr, const term_t* indices,
 }
 
 void SeismicIndex::build() {
-    // build inverted index
-    std::unique_ptr<ArrayInvertedLists> inverted_lists =
-        ArrayInvertedLists::build_inverted_lists(get_dimension(), kElementSize,
-                                                 vectors_.get());
-    // TODO: generate lambda and beta
-    size_t inverted_lists_size = inverted_lists->size();
-    clustered_inverted_lists.clear();
-    clustered_inverted_lists.resize(inverted_lists_size);
-#pragma omp parallel for schedule(dynamic, 64)
-    for (size_t idx = 0; idx < inverted_lists_size; ++idx) {
-        auto& invlist = (*inverted_lists)[idx];
-        const auto& doc_ids = invlist.prune_and_keep_doc_ids(lambda_);
-        InvertedListClusters inverted_list_clusters(
-            detail::RandomKMeans::train(vectors_.get(), doc_ids, beta_));
-        inverted_list_clusters.summarize(vectors_.get(), alpha_);
-        clustered_inverted_lists[idx] = std::move(inverted_list_clusters);
-        invlist.clear();
-    }
+    clustered_inverted_lists = std::move(detail::build_inverted_lists_clusters(
+        vectors_.get(),
+        {.element_size = kElementSize,
+         .dimension = static_cast<size_t>(get_dimension())},
+        cluster_parameter_));
 }
 
 auto SeismicIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,

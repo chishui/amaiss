@@ -9,6 +9,7 @@
 #include "amaiss/brutal_index.h"
 #include "amaiss/id_map_index.h"
 #include "amaiss/index.h"
+#include "amaiss/seismic_common.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
 
@@ -89,7 +90,9 @@ Index* index_factory(int dimension, const char* description) {
         int lambda = std::stoi(get_param("lambda", "10"));
         int beta = std::stoi(get_param("beta", "5"));
         float alpha = std::stof(get_param("alpha", "0.5"));
-        return new SeismicIndex(lambda, beta, alpha, dimension);
+        return new SeismicIndex(dimension, {.lambda = lambda = lambda,
+                                            .beta = beta = beta,
+                                            .alpha = alpha = alpha});
     }
 
     if (index_type == "seismic_sq") {
@@ -104,7 +107,10 @@ Index* index_factory(int dimension, const char* description) {
         int beta = std::stoi(get_param("beta", "5"));
         float alpha = std::stof(get_param("alpha", "0.5"));
         return new SeismicScalarQuantizedIndex(quantizer_type, vmin, vmax,
-                                               lambda, beta, alpha, dimension);
+                                               {.lambda = lambda = lambda,
+                                                .beta = beta = beta,
+                                                .alpha = alpha = alpha},
+                                               dimension);
     }
 
     if (index_type == "idmap") {
