@@ -1,7 +1,6 @@
 #include "nsparse/brutal_index.h"
 
 #include <algorithm>
-#include <format>
 #include <iostream>
 #include <memory>
 #include <vector>

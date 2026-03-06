@@ -1,6 +1,7 @@
 #ifndef IO_H
 #define IO_H
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace nsparse {
