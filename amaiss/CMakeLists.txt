@@ -6,6 +6,7 @@ set(AMAISS_SRC
     sparse_vectors.cpp
     index_factory.cpp
     id_map_index.cpp
+    inverted_index.cpp
     cluster/random_kmeans.cpp
     cluster/kmeans_utils.cpp
     cluster/inverted_list_clusters.cpp
@@ -24,6 +25,7 @@ set(AMAISS_HEADERS
     seismic_scalar_quantized_index.h
     index_factory.h
     id_map_index.h
+    inverted_index.h
     utils/checks.h
     utils/distance.h
     utils/distance_avx512.h

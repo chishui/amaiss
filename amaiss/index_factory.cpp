@@ -9,6 +9,7 @@
 #include "amaiss/brutal_index.h"
 #include "amaiss/id_map_index.h"
 #include "amaiss/index.h"
+#include "amaiss/inverted_index.h"
 #include "amaiss/seismic_common.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
@@ -84,6 +85,10 @@ Index* index_factory(int dimension, const char* description) {
 
     if (index_type == "brutal") {
         return new BrutalIndex(dimension);
+    }
+
+    if (index_type == "inverted") {
+        return new InvertedIndex(dimension);
     }
 
     if (index_type == "seismic") {

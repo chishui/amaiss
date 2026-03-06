@@ -6,6 +6,7 @@
 
 #include "amaiss/brutal_index.h"
 #include "amaiss/index.h"
+#include "amaiss/inverted_index.h"
 #include "amaiss/seismic_index.h"
 #include "amaiss/seismic_scalar_quantized_index.h"
 
@@ -40,6 +41,34 @@ TEST(IndexFactory, creates_brutal_index_with_whitespace) {
     ASSERT_NE(index, nullptr);
     auto* brutal = dynamic_cast<amaiss::BrutalIndex*>(index.get());
     ASSERT_NE(brutal, nullptr);
+}
+
+// InvertedIndex tests
+TEST(IndexFactory, creates_inverted_index) {
+    std::unique_ptr<amaiss::Index> index(
+        amaiss::index_factory(100, "inverted"));
+
+    ASSERT_NE(index, nullptr);
+    ASSERT_EQ(index->get_dimension(), 100);
+
+    auto* inverted = dynamic_cast<amaiss::InvertedIndex*>(index.get());
+    ASSERT_NE(inverted, nullptr);
+}
+
+TEST(IndexFactory, creates_inverted_index_with_whitespace) {
+    std::unique_ptr<amaiss::Index> index(
+        amaiss::index_factory(50, "  inverted  "));
+
+    ASSERT_NE(index, nullptr);
+    auto* inverted = dynamic_cast<amaiss::InvertedIndex*>(index.get());
+    ASSERT_NE(inverted, nullptr);
+}
+
+TEST(IndexFactory, inverted_index_has_correct_id) {
+    std::unique_ptr<amaiss::Index> index(
+        amaiss::index_factory(100, "inverted"));
+
+    ASSERT_EQ(index->id(), amaiss::InvertedIndex::name);
 }
 
 // SeismicIndex tests

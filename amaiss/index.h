@@ -30,7 +30,7 @@ public:
         idx_t n, const idx_t* indptr, const term_t* indices,
         const float* values, int k, float* distances, idx_t* labels,
         SearchParameters* search_parameters = nullptr);  // Pre-allocated: n * k
-    virtual const SparseVectors* get_vectors() const = 0;
+    virtual const SparseVectors* get_vectors() const { return nullptr; };
 
     int get_dimension() const { return dimension_; }
     size_t num_vectors() const {

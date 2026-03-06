@@ -1,7 +1,7 @@
 # Copyright (c) amaiss authors
 # Benchmarks for amaiss library
 set(AMAISS_BENCHMARK_SRC
-    seismic_sq_search_benchmark.cpp
+    index_search_benchmark.cpp
 )
 # Fetch Google Benchmark
 include(FetchContent)

@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstring>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -76,6 +75,28 @@ void InvertedList::clear() {
     codes_.shrink_to_fit();
 }
 
+float InvertedList::max_value() const {
+    float max_val = 0.0F;
+    size_t n = doc_ids_.size();
+    for (size_t i = 0; i < n; ++i) {
+        float v = get_value_float(i);
+        if (v > max_val) max_val = v;
+    }
+    return max_val;
+}
+
+float InvertedList::get_value_float(size_t index) const {
+    const uint8_t* value_ptr = codes_.data() + (index * element_size_);
+    if (element_size_ == U32) {
+        return *reinterpret_cast<const float*>(value_ptr);
+    }
+    if (element_size_ == U16) {
+        return static_cast<float>(
+            *reinterpret_cast<const uint16_t*>(value_ptr));
+    }
+    return static_cast<float>(*value_ptr);
+}
+
 std::vector<idx_t> InvertedList::prune_and_keep_doc_ids(size_t lambda) {
     LockGuard guard(lock_);
 
@@ -136,7 +157,6 @@ std::unique_ptr<ArrayInvertedLists> ArrayInvertedLists::build_inverted_lists(
     const auto& values_data = vectors->values_data();
 
     // inverted_lists.add_entry is thread safe
-#pragma omp parallel for schedule(dynamic, 64)
     for (size_t i = 0; i < n_docs; ++i) {
         int start = indptr_data[i];
         int n_tokens = indptr_data[i + 1] - indptr_data[i];

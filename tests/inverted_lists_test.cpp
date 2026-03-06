@@ -536,3 +536,75 @@ TEST(ArrayInvertedLists, build_inverted_lists_preserves_values) {
     float stored = *reinterpret_cast<const float*>(codes.data());
     ASSERT_FLOAT_EQ(stored, 42.5F);
 }
+
+// Tests for newly added InvertedList functions
+
+TEST(InvertedList, get_value_float_all_element_sizes) {
+    // U32 (float)
+    {
+        amaiss::InvertedList list(amaiss::U32);
+        std::vector<amaiss::idx_t> doc_ids = {1, 2, 3};
+        std::vector<float> values = {1.5F, 2.7F, 0.3F};
+        list.add_entries(3, doc_ids.data(),
+                         reinterpret_cast<const uint8_t*>(values.data()));
+
+        EXPECT_FLOAT_EQ(list.get_value_float(0), 1.5F);
+        EXPECT_FLOAT_EQ(list.get_value_float(1), 2.7F);
+        EXPECT_FLOAT_EQ(list.get_value_float(2), 0.3F);
+    }
+    // U16
+    {
+        amaiss::InvertedList list(amaiss::U16);
+        std::vector<amaiss::idx_t> doc_ids = {10, 20};
+        std::vector<uint16_t> values = {500, 1000};
+        list.add_entries(2, doc_ids.data(),
+                         reinterpret_cast<const uint8_t*>(values.data()));
+
+        EXPECT_FLOAT_EQ(list.get_value_float(0), 500.0F);
+        EXPECT_FLOAT_EQ(list.get_value_float(1), 1000.0F);
+    }
+    // U8
+    {
+        amaiss::InvertedList list(amaiss::U8);
+        std::vector<amaiss::idx_t> doc_ids = {5, 6};
+        std::vector<uint8_t> values = {42, 255};
+        list.add_entries(2, doc_ids.data(), values.data());
+
+        EXPECT_FLOAT_EQ(list.get_value_float(0), 42.0F);
+        EXPECT_FLOAT_EQ(list.get_value_float(1), 255.0F);
+    }
+}
+
+TEST(InvertedList, max_value_returns_maximum) {
+    amaiss::InvertedList list(amaiss::U32);
+    std::vector<amaiss::idx_t> doc_ids = {1, 2, 3, 4};
+    std::vector<float> values = {0.5F, 3.7F, 1.2F, 2.9F};
+    list.add_entries(4, doc_ids.data(),
+                     reinterpret_cast<const uint8_t*>(values.data()));
+
+    EXPECT_FLOAT_EQ(list.max_value(), 3.7F);
+
+    // Empty list returns 0
+    amaiss::InvertedList empty_list(amaiss::U32);
+    EXPECT_FLOAT_EQ(empty_list.max_value(), 0.0F);
+}
+
+TEST(InvertedList, size_returns_doc_count) {
+    amaiss::InvertedList list(amaiss::U32);
+    EXPECT_EQ(list.size(), 0);
+
+    std::vector<amaiss::idx_t> doc_ids = {1, 2, 3};
+    std::vector<float> values = {1.0F, 2.0F, 3.0F};
+    list.add_entries(3, doc_ids.data(),
+                     reinterpret_cast<const uint8_t*>(values.data()));
+    EXPECT_EQ(list.size(), 3);
+
+    // Add more entries
+    amaiss::idx_t doc4 = 4;
+    float val4 = 4.0F;
+    list.add_entries(1, &doc4, reinterpret_cast<const uint8_t*>(&val4));
+    EXPECT_EQ(list.size(), 4);
+
+    list.clear();
+    EXPECT_EQ(list.size(), 0);
+}

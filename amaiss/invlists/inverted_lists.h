@@ -24,8 +24,12 @@ public:
     const std::vector<idx_t>& get_doc_ids() const { return doc_ids_; };
     const std::vector<uint8_t>& get_codes() const { return codes_; };
 
+    float get_value_float(size_t index) const;
+
     std::vector<idx_t> prune_and_keep_doc_ids(size_t lambda);
     void clear();
+    float max_value() const;
+    size_t size() const { return doc_ids_.size(); }
 
 private:
     size_t element_size_;

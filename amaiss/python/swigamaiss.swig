@@ -17,6 +17,7 @@
 #include "amaiss/id_map_index.h"
 #include "amaiss/utils/scalar_quantizer.h"
 #include "amaiss/cluster/random_kmeans.h"
+#include "amaiss/inverted_index.h"
 #include "amaiss/index_factory.h"
 #include "amaiss/io/index_io.h"
 %}
@@ -77,6 +78,9 @@ import_array();
 // Ignore SeismicScalarQuantizedIndex's vector-based search methods
 %ignore amaiss::SeismicScalarQuantizedIndex::search(idx_t, std::vector<idx_t>&, std::vector<term_t>&, std::vector<float>&, int);
 
+// Ignore InvertedIndex's protected search method (returns pair_of_score_id_vectors_t)
+%ignore amaiss::InvertedIndex::search;
+
 // Ignore the original search methods - we'll provide our own via %extend
 %ignore amaiss::Index::search;
 
@@ -104,16 +108,17 @@ import_array();
 %include "amaiss/seismic_common.h"
 %include "amaiss/seismic_index.h"
 %include "amaiss/seismic_scalar_quantized_index.h"
+%include "amaiss/inverted_index.h"
 %include "amaiss/id_map_index.h"
 %include "amaiss/cluster/random_kmeans.h"
 
 // index_factory returns a new object - Python takes ownership
 // Use %factory to enable proper downcasting based on runtime type
 %newobject amaiss::index_factory;
-%factory(amaiss::Index* amaiss::index_factory, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex);
+%factory(amaiss::Index* amaiss::index_factory, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex, amaiss::InvertedIndex);
 %include "amaiss/index_factory.h"
 
 // read_index returns a new object - Python takes ownership
 %newobject amaiss::read_index;
-%factory(amaiss::Index* amaiss::read_index, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex);
+%factory(amaiss::Index* amaiss::read_index, amaiss::BrutalIndex, amaiss::SeismicIndex, amaiss::SeismicScalarQuantizedIndex, amaiss::IDMapIndex, amaiss::InvertedIndex);
 %include "amaiss/io/index_io.h"
