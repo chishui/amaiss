@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "amaiss/types.h"
+#include "nsparse/types.h"
 
 // Mock infrastructure for prefetch
 namespace prefetch_mock {
@@ -24,18 +24,18 @@ void record(const void* addr, int rw, int locality) {
 }
 }  // namespace prefetch_mock
 
-// Override AMAISS_PREFETCH before including prefetch.h
-#define AMAISS_PREFETCH(addr, rw, locality) \
+// Override NSPARSE_PREFETCH before including prefetch.h
+#define NSPARSE_PREFETCH(addr, rw, locality) \
     prefetch_mock::record(addr, rw, locality)
 
 // Force unique instantiations local to this TU by wrapping in anonymous
 // namespace. This avoids ODR conflicts with other TUs that use the real
 // __builtin_prefetch.
-#include "amaiss/utils/prefetch.h"
+#include "nsparse/utils/prefetch.h"
 
 namespace {
 
-using amaiss::term_t;
+using nsparse::term_t;
 
 template <class T>
 __attribute__((noinline)) void test_prefetch_vector(const term_t* indices,
@@ -47,10 +47,10 @@ __attribute__((noinline)) void test_prefetch_vector(const term_t* indices,
     const size_t indices_bytes = len * sizeof(term_t);
     const size_t values_bytes = len * sizeof(T);
     for (size_t offset = 0; offset < indices_bytes; offset += kCacheLineSize) {
-        AMAISS_PREFETCH(indices_ptr + offset, 0, 0);
+        NSPARSE_PREFETCH(indices_ptr + offset, 0, 0);
     }
     for (size_t offset = 0; offset < values_bytes; offset += kCacheLineSize) {
-        AMAISS_PREFETCH(values_ptr + offset, 0, 0);
+        NSPARSE_PREFETCH(values_ptr + offset, 0, 0);
     }
 }
 

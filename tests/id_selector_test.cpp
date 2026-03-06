@@ -1,12 +1,12 @@
-// Copyright (c) amaiss authors
+// Copyright (c) nsparse authors
 
-#include "amaiss/id_selector.h"
+#include "nsparse/id_selector.h"
 
 #include <vector>
 
 #include "gtest/gtest.h"
 
-namespace amaiss {
+namespace nsparse {
 
 // --- SetIDSelector tests ---
 
@@ -100,4 +100,4 @@ TEST(NotIDSelector, double_negation) {
     EXPECT_FALSE(double_not.is_member(15));
 }
 
-}  // namespace amaiss
+}  // namespace nsparse

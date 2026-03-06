@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+# python
+nsparse/python/venv/
+venv/
+
+# third_party
+third_party/

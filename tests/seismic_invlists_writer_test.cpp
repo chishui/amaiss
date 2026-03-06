@@ -1,21 +1,21 @@
-#include "amaiss/io/seismic_invlists_writer.h"
+#include "nsparse/io/seismic_invlists_writer.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "amaiss/cluster/inverted_list_clusters.h"
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
+#include "nsparse/cluster/inverted_list_clusters.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
 namespace {
 
-amaiss::SparseVectors create_float_vectors(
-    const std::vector<std::vector<amaiss::term_t>>& indices_list,
+nsparse::SparseVectors create_float_vectors(
+    const std::vector<std::vector<nsparse::term_t>>& indices_list,
     const std::vector<std::vector<float>>& values_list, size_t dimension = 10) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = dimension});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = dimension});
     for (size_t i = 0; i < indices_list.size(); ++i) {
         const auto& indices = indices_list[i];
         const auto& values = values_list[i];
@@ -29,15 +29,15 @@ amaiss::SparseVectors create_float_vectors(
 }  // namespace
 
 TEST(SeismicInvertedListsWriter, serialize_deserialize_empty) {
-    std::vector<amaiss::InvertedListClusters> original;
-    amaiss::SeismicInvertedListsWriter writer(original);
+    std::vector<nsparse::InvertedListClusters> original;
+    nsparse::SeismicInvertedListsWriter writer(original);
 
-    amaiss::BufferedIOWriter io_writer;
+    nsparse::BufferedIOWriter io_writer;
     writer.serialize(&io_writer);
 
-    amaiss::BufferedIOReader io_reader(io_writer.data());
-    std::vector<amaiss::InvertedListClusters> loaded;
-    amaiss::SeismicInvertedListsWriter reader(loaded);
+    nsparse::BufferedIOReader io_reader(io_writer.data());
+    std::vector<nsparse::InvertedListClusters> loaded;
+    nsparse::SeismicInvertedListsWriter reader(loaded);
     reader.deserialize(&io_reader);
 
     auto result = reader.release();
@@ -45,20 +45,20 @@ TEST(SeismicInvertedListsWriter, serialize_deserialize_empty) {
 }
 
 TEST(SeismicInvertedListsWriter, serialize_deserialize_single_cluster) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2}};
+    nsparse::InvertedListClusters clusters(docs);
 
-    std::vector<amaiss::InvertedListClusters> original;
+    std::vector<nsparse::InvertedListClusters> original;
     original.push_back(std::move(clusters));
 
-    amaiss::SeismicInvertedListsWriter writer(original);
+    nsparse::SeismicInvertedListsWriter writer(original);
 
-    amaiss::BufferedIOWriter io_writer;
+    nsparse::BufferedIOWriter io_writer;
     writer.serialize(&io_writer);
 
-    amaiss::BufferedIOReader io_reader(io_writer.data());
-    std::vector<amaiss::InvertedListClusters> loaded;
-    amaiss::SeismicInvertedListsWriter reader(loaded);
+    nsparse::BufferedIOReader io_reader(io_writer.data());
+    std::vector<nsparse::InvertedListClusters> loaded;
+    nsparse::SeismicInvertedListsWriter reader(loaded);
     reader.deserialize(&io_reader);
 
     auto result = reader.release();
@@ -75,25 +75,25 @@ TEST(SeismicInvertedListsWriter, serialize_deserialize_single_cluster) {
 }
 
 TEST(SeismicInvertedListsWriter, serialize_deserialize_multiple_clusters) {
-    std::vector<amaiss::InvertedListClusters> original;
+    std::vector<nsparse::InvertedListClusters> original;
 
-    std::vector<std::vector<amaiss::idx_t>> docs1 = {{0, 1}};
+    std::vector<std::vector<nsparse::idx_t>> docs1 = {{0, 1}};
     original.emplace_back(docs1);
 
-    std::vector<std::vector<amaiss::idx_t>> docs2 = {{2, 3, 4}};
+    std::vector<std::vector<nsparse::idx_t>> docs2 = {{2, 3, 4}};
     original.emplace_back(docs2);
 
-    std::vector<std::vector<amaiss::idx_t>> docs3 = {{5}};
+    std::vector<std::vector<nsparse::idx_t>> docs3 = {{5}};
     original.emplace_back(docs3);
 
-    amaiss::SeismicInvertedListsWriter writer(original);
+    nsparse::SeismicInvertedListsWriter writer(original);
 
-    amaiss::BufferedIOWriter io_writer;
+    nsparse::BufferedIOWriter io_writer;
     writer.serialize(&io_writer);
 
-    amaiss::BufferedIOReader io_reader(io_writer.data());
-    std::vector<amaiss::InvertedListClusters> loaded;
-    amaiss::SeismicInvertedListsWriter reader(loaded);
+    nsparse::BufferedIOReader io_reader(io_writer.data());
+    std::vector<nsparse::InvertedListClusters> loaded;
+    nsparse::SeismicInvertedListsWriter reader(loaded);
     reader.deserialize(&io_reader);
 
     auto result = reader.release();
@@ -105,24 +105,24 @@ TEST(SeismicInvertedListsWriter, serialize_deserialize_multiple_clusters) {
 }
 
 TEST(SeismicInvertedListsWriter, serialize_deserialize_with_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2}};
+    nsparse::InvertedListClusters clusters(docs);
 
     auto vectors = create_float_vectors(
         {{0, 1}, {0, 2}, {1, 2}}, {{1.0F, 2.0F}, {1.5F, 1.0F}, {3.0F, 2.0F}});
     clusters.summarize(&vectors, 1.0F);
 
-    std::vector<amaiss::InvertedListClusters> original;
+    std::vector<nsparse::InvertedListClusters> original;
     original.push_back(std::move(clusters));
 
-    amaiss::SeismicInvertedListsWriter writer(original);
+    nsparse::SeismicInvertedListsWriter writer(original);
 
-    amaiss::BufferedIOWriter io_writer;
+    nsparse::BufferedIOWriter io_writer;
     writer.serialize(&io_writer);
 
-    amaiss::BufferedIOReader io_reader(io_writer.data());
-    std::vector<amaiss::InvertedListClusters> loaded;
-    amaiss::SeismicInvertedListsWriter reader(loaded);
+    nsparse::BufferedIOReader io_reader(io_writer.data());
+    std::vector<nsparse::InvertedListClusters> loaded;
+    nsparse::SeismicInvertedListsWriter reader(loaded);
     reader.deserialize(&io_reader);
 
     auto result = reader.release();
@@ -131,13 +131,13 @@ TEST(SeismicInvertedListsWriter, serialize_deserialize_with_summaries) {
 }
 
 TEST(SeismicInvertedListsWriter, release_moves_data) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}};
+    nsparse::InvertedListClusters clusters(docs);
 
-    std::vector<amaiss::InvertedListClusters> original;
+    std::vector<nsparse::InvertedListClusters> original;
     original.push_back(std::move(clusters));
 
-    amaiss::SeismicInvertedListsWriter writer(original);
+    nsparse::SeismicInvertedListsWriter writer(original);
 
     auto released = writer.release();
     ASSERT_EQ(released.size(), 1);

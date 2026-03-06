@@ -1,4 +1,4 @@
-#include "amaiss/seismic_scalar_quantized_index.h"
+#include "nsparse/seismic_scalar_quantized_index.h"
 
 #include <gtest/gtest.h>
 
@@ -7,15 +7,15 @@
 #include <unordered_set>
 #include <vector>
 
-#include "amaiss/cluster/inverted_list_clusters.h"
-#include "amaiss/id_selector.h"
-#include "amaiss/index.h"
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/io/index_io.h"
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
+#include "nsparse/cluster/inverted_list_clusters.h"
+#include "nsparse/id_selector.h"
+#include "nsparse/index.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/io/index_io.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
-namespace amaiss {
+namespace nsparse {
 namespace {
 
 // Testable subclass that exposes protected members
@@ -752,4 +752,4 @@ TEST(SeismicSQIndexSearch, search_with_id_selector_filters_results) {
 }
 
 }  // namespace
-}  // namespace amaiss
+}  // namespace nsparse

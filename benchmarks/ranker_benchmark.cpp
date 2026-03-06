@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "amaiss/utils/ranker.h"
+#include "nsparse/utils/ranker.h"
 
 namespace {
 
@@ -25,7 +25,7 @@ static void BM_TopKHolder_Add(benchmark::State& state) {
     auto data = GenerateRandomData(n, 42);
 
     for (auto _ : state) {
-        amaiss::detail::TopKHolder<size_t> holder(k);
+        nsparse::detail::TopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id);
         }
@@ -41,7 +41,7 @@ static void BM_TopKHolder_TopK(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        amaiss::detail::TopKHolder<size_t> holder(k);
+        nsparse::detail::TopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id);
         }
@@ -58,7 +58,7 @@ static void BM_TopKHolder_TopKDescending(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        amaiss::detail::TopKHolder<size_t> holder(k);
+        nsparse::detail::TopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id);
         }
@@ -74,7 +74,7 @@ static void BM_DedupeTopKHolder_Add(benchmark::State& state) {
     auto data = GenerateRandomData(n, 42);
 
     for (auto _ : state) {
-        amaiss::detail::DedupeTopKHolder<size_t> holder(k);
+        nsparse::detail::DedupeTopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id, id);
         }
@@ -93,7 +93,7 @@ static void BM_DedupeTopKHolder_AddWithDuplicates(benchmark::State& state) {
     }
 
     for (auto _ : state) {
-        amaiss::detail::DedupeTopKHolder<size_t> holder(k);
+        nsparse::detail::DedupeTopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id, id);
         }
@@ -109,7 +109,7 @@ static void BM_DedupeTopKHolder_TopK(benchmark::State& state) {
 
     for (auto _ : state) {
         state.PauseTiming();
-        amaiss::detail::DedupeTopKHolder<size_t> holder(k);
+        nsparse::detail::DedupeTopKHolder<size_t> holder(k);
         for (const auto& [score, id] : data) {
             holder.add(score, id, id);
         }

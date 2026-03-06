@@ -1,4 +1,4 @@
-#include "amaiss/io/index_io.h"
+#include "nsparse/io/index_io.h"
 
 #include <gtest/gtest.h>
 
@@ -7,20 +7,20 @@
 #include <cstring>
 #include <vector>
 
-#include "amaiss/brutal_index.h"
-#include "amaiss/id_map_index.h"
-#include "amaiss/index.h"
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/io/io.h"
-#include "amaiss/seismic_index.h"
-#include "amaiss/seismic_scalar_quantized_index.h"
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
+#include "nsparse/brutal_index.h"
+#include "nsparse/id_map_index.h"
+#include "nsparse/index.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/io/io.h"
+#include "nsparse/seismic_index.h"
+#include "nsparse/seismic_scalar_quantized_index.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
 namespace {
 
 // Mock Index that implements both Index and IndexIO for testing
-class MockIndex : public amaiss::Index, public amaiss::IndexIO {
+class MockIndex : public nsparse::Index, public nsparse::IndexIO {
 public:
     static constexpr std::array<char, 4> name = {'M', 'O', 'C', 'K'};
 
@@ -28,23 +28,23 @@ public:
 
     std::array<char, 4> id() const override { return name; }
 
-    void add(amaiss::idx_t /*n*/, const amaiss::idx_t* /*indptr*/,
-             const amaiss::term_t* /*indices*/,
+    void add(nsparse::idx_t /*n*/, const nsparse::idx_t* /*indptr*/,
+             const nsparse::term_t* /*indices*/,
              const float* /*values*/) override {}
 
-    const amaiss::SparseVectors* get_vectors() const override {
+    const nsparse::SparseVectors* get_vectors() const override {
         return nullptr;
     }
 
     // IndexIO implementation
-    void write_index(amaiss::IOWriter* io_writer) override {
+    void write_index(nsparse::IOWriter* io_writer) override {
         io_writer->write(&test_data_, sizeof(int), 1);
         size_t size = test_string_.size();
         io_writer->write(&size, sizeof(size_t), 1);
         io_writer->write(test_string_.data(), sizeof(char), size);
     }
 
-    void read_index(amaiss::IOReader* io_reader) override {
+    void read_index(nsparse::IOReader* io_reader) override {
         io_reader->read(&test_data_, sizeof(int), 1);
         size_t size = 0;
         io_reader->read(&size, sizeof(size_t), 1);
@@ -71,8 +71,8 @@ TEST(IndexIO, WriteIndexBasic) {
     index.set_test_data(42);
     index.set_test_string("hello");
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(&index, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(&index, &writer);
 
     // Verify something was written
     ASSERT_GT(writer.size(), 0);
@@ -81,7 +81,7 @@ TEST(IndexIO, WriteIndexBasic) {
     const auto& data = writer.data();
     uint32_t written_fourcc = 0;
     std::memcpy(&written_fourcc, data.data(), sizeof(uint32_t));
-    ASSERT_EQ(written_fourcc, amaiss::fourcc(MockIndex::name));
+    ASSERT_EQ(written_fourcc, nsparse::fourcc(MockIndex::name));
 
     // Verify dimension is written after fourcc
     int written_dim = 0;
@@ -92,21 +92,21 @@ TEST(IndexIO, WriteIndexBasic) {
 // Test write_index throws for non-IndexIO index
 TEST(IndexIO, WriteIndexThrowsForNonIndexIO) {
     // Create a minimal Index that doesn't implement IndexIO
-    class NonSerializableIndex : public amaiss::Index {
+    class NonSerializableIndex : public nsparse::Index {
     public:
         NonSerializableIndex() : Index(10) {}
         std::array<char, 4> id() const override { return {'N', 'O', 'I', 'O'}; }
-        void add(amaiss::idx_t, const amaiss::idx_t*, const amaiss::term_t*,
+        void add(nsparse::idx_t, const nsparse::idx_t*, const nsparse::term_t*,
                  const float*) override {}
-        const amaiss::SparseVectors* get_vectors() const override {
+        const nsparse::SparseVectors* get_vectors() const override {
             return nullptr;
         }
     };
 
     NonSerializableIndex index;
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
 
-    ASSERT_THROW(amaiss::write_index(&index, &writer), std::runtime_error);
+    ASSERT_THROW(nsparse::write_index(&index, &writer), std::runtime_error);
 }
 
 // Test read_index throws for unknown index type
@@ -118,21 +118,21 @@ TEST(IndexIO, ReadIndexThrowsForUnknownType) {
     std::memcpy(buffer.data(), &unknown_fourcc, sizeof(uint32_t));
     std::memcpy(buffer.data() + sizeof(uint32_t), &dimension, sizeof(int));
 
-    amaiss::BufferedIOReader reader(buffer);
-    ASSERT_THROW(amaiss::read_index(&reader), std::runtime_error);
+    nsparse::BufferedIOReader reader(buffer);
+    ASSERT_THROW(nsparse::read_index(&reader), std::runtime_error);
 }
 
 // Test roundtrip with SeismicIndex (real index that supports serialization)
 TEST(IndexIO, RoundtripSeismicIndex) {
     // Create and write a SeismicIndex
-    auto* original = new amaiss::SeismicIndex(256);
+    auto* original = new nsparse::SeismicIndex(256);
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(original, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(original, &writer);
 
     // Read it back
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::Index* loaded = amaiss::read_index(&reader);
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::Index* loaded = nsparse::read_index(&reader);
 
     ASSERT_NE(loaded, nullptr);
     ASSERT_EQ(loaded->get_dimension(), 256);
@@ -144,23 +144,23 @@ TEST(IndexIO, RoundtripSeismicIndex) {
 
 // Test write_index throws for BrutalIndex (doesn't implement IndexIO)
 TEST(IndexIO, WriteIndexThrowsForBrutalIndex) {
-    auto* index = new amaiss::BrutalIndex(512);
+    auto* index = new nsparse::BrutalIndex(512);
 
-    amaiss::BufferedIOWriter writer;
-    ASSERT_THROW(amaiss::write_index(index, &writer), std::runtime_error);
+    nsparse::BufferedIOWriter writer;
+    ASSERT_THROW(nsparse::write_index(index, &writer), std::runtime_error);
 
     delete index;
 }
 
 // Test roundtrip with SeismicScalarQuantizedIndex
 TEST(IndexIO, RoundtripSeismicScalarQuantizedIndex) {
-    auto* original = new amaiss::SeismicScalarQuantizedIndex(1024);
+    auto* original = new nsparse::SeismicScalarQuantizedIndex(1024);
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(original, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(original, &writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::Index* loaded = amaiss::read_index(&reader);
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::Index* loaded = nsparse::read_index(&reader);
 
     ASSERT_NE(loaded, nullptr);
     ASSERT_EQ(loaded->get_dimension(), 1024);
@@ -172,12 +172,12 @@ TEST(IndexIO, RoundtripSeismicScalarQuantizedIndex) {
 
 // Test write_index with empty writer
 TEST(IndexIO, WriteIndexEmptyWriter) {
-    auto* index = new amaiss::SeismicIndex(64);
+    auto* index = new nsparse::SeismicIndex(64);
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     ASSERT_EQ(writer.size(), 0);
 
-    amaiss::write_index(index, &writer);
+    nsparse::write_index(index, &writer);
     ASSERT_GT(writer.size(), 0);
 
     delete index;
@@ -186,13 +186,13 @@ TEST(IndexIO, WriteIndexEmptyWriter) {
 // Test read_index with small dimension
 TEST(IndexIO, ReadIndexSmallDimension) {
     // Use a real SeismicIndex to create a valid buffer
-    auto* original = new amaiss::SeismicIndex(32);
+    auto* original = new nsparse::SeismicIndex(32);
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(original, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(original, &writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::Index* loaded = amaiss::read_index(&reader);
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::Index* loaded = nsparse::read_index(&reader);
 
     ASSERT_NE(loaded, nullptr);
     ASSERT_EQ(loaded->get_dimension(), 32);
@@ -203,7 +203,7 @@ TEST(IndexIO, ReadIndexSmallDimension) {
 
 // Test BufferedIOWriter and BufferedIOReader work correctly together
 TEST(IndexIO, BufferedIOWriterReaderIntegration) {
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
 
     // Write various data types
     int int_val = 12345;
@@ -215,7 +215,7 @@ TEST(IndexIO, BufferedIOWriterReaderIntegration) {
     writer.write(bytes.data(), sizeof(uint8_t), bytes.size());
 
     // Read back
-    amaiss::BufferedIOReader reader(writer.data());
+    nsparse::BufferedIOReader reader(writer.data());
 
     int read_int = 0;
     float read_float = 0.0F;
@@ -233,13 +233,13 @@ TEST(IndexIO, BufferedIOWriterReaderIntegration) {
 // Test multiple write/read cycles
 TEST(IndexIO, MultipleWriteReadCycles) {
     for (int i = 0; i < 3; ++i) {
-        auto* index = new amaiss::SeismicIndex(64 * (i + 1));
+        auto* index = new nsparse::SeismicIndex(64 * (i + 1));
 
-        amaiss::BufferedIOWriter writer;
-        amaiss::write_index(index, &writer);
+        nsparse::BufferedIOWriter writer;
+        nsparse::write_index(index, &writer);
 
-        amaiss::BufferedIOReader reader(writer.data());
-        amaiss::Index* loaded = amaiss::read_index(&reader);
+        nsparse::BufferedIOReader reader(writer.data());
+        nsparse::Index* loaded = nsparse::read_index(&reader);
 
         ASSERT_EQ(loaded->get_dimension(), 64 * (i + 1));
 
@@ -250,14 +250,14 @@ TEST(IndexIO, MultipleWriteReadCycles) {
 
 // Test roundtrip with IDMapIndex wrapping SeismicIndex
 TEST(IndexIO, RoundtripIDMapIndex) {
-    auto* seismic = new amaiss::SeismicIndex(128);
-    auto* original = new amaiss::IDMapIndex(seismic);
+    auto* seismic = new nsparse::SeismicIndex(128);
+    auto* original = new nsparse::IDMapIndex(seismic);
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(original, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(original, &writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::Index* loaded = amaiss::read_index(&reader);
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::Index* loaded = nsparse::read_index(&reader);
 
     ASSERT_NE(loaded, nullptr);
     ASSERT_EQ(loaded->id(), original->id());
@@ -269,22 +269,22 @@ TEST(IndexIO, RoundtripIDMapIndex) {
 
 // Test roundtrip with IDMapIndex with data
 TEST(IndexIO, RoundtripIDMapIndexWithData) {
-    auto* seismic = new amaiss::SeismicIndex(128);
-    auto* original = new amaiss::IDMapIndex(seismic);
+    auto* seismic = new nsparse::SeismicIndex(128);
+    auto* original = new nsparse::IDMapIndex(seismic);
 
     // Add some vectors with custom IDs
-    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
-    std::vector<amaiss::term_t> indices = {0, 1, 2, 3};
+    std::vector<nsparse::idx_t> indptr = {0, 2, 4};
+    std::vector<nsparse::term_t> indices = {0, 1, 2, 3};
     std::vector<float> values = {1.0F, 0.5F, 0.8F, 0.3F};
-    std::vector<amaiss::idx_t> ids = {100, 200};
+    std::vector<nsparse::idx_t> ids = {100, 200};
     original->add_with_ids(2, indptr.data(), indices.data(), values.data(),
                            ids.data());
 
-    amaiss::BufferedIOWriter writer;
-    amaiss::write_index(original, &writer);
+    nsparse::BufferedIOWriter writer;
+    nsparse::write_index(original, &writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::Index* loaded = amaiss::read_index(&reader);
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::Index* loaded = nsparse::read_index(&reader);
 
     ASSERT_NE(loaded, nullptr);
     ASSERT_EQ(loaded->id(), original->id());

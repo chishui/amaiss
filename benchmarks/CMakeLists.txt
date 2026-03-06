@@ -1,6 +1,6 @@
-# Copyright (c) amaiss authors
-# Benchmarks for amaiss library
-set(AMAISS_BENCHMARK_SRC
+# Copyright (c) nsparse authors
+# Benchmarks for nsparse library
+set(NSPARSE_BENCHMARK_SRC
     index_search_benchmark.cpp
 )
 # Fetch Google Benchmark
@@ -20,15 +20,15 @@ endif()
 
 FetchContent_MakeAvailable(googlebenchmark)
 
-if(AMAISS_BENCHMARK_SRC)
+if(NSPARSE_BENCHMARK_SRC)
     find_package(OpenMP REQUIRED)
 
-    add_executable(amaiss_benchmark ${AMAISS_BENCHMARK_SRC})
+    add_executable(nsparse_benchmark ${NSPARSE_BENCHMARK_SRC})
 
-    target_include_directories(amaiss_benchmark PRIVATE ${PROJECT_SOURCE_DIR})
+    target_include_directories(nsparse_benchmark PRIVATE ${PROJECT_SOURCE_DIR})
 
-    target_link_libraries(amaiss_benchmark PRIVATE
-        amaiss
+    target_link_libraries(nsparse_benchmark PRIVATE
+        nsparse
         OpenMP::OpenMP_CXX
         benchmark::benchmark
         benchmark::benchmark_main

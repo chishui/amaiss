@@ -2,7 +2,7 @@
 # policies up to CMake 3.27
 cmake_minimum_required(VERSION 3.15...3.27)
 
-project(amaiss
+project(nsparse
   VERSION 0.1
   LANGUAGES CXX)
 
@@ -14,27 +14,27 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/third_party.cmake)
 
 # Valid values are "generic", "avx2", "avx512", "sve".
-option(AMAISS_OPT_LEVEL "" "generic")
-option(AMAISS_ENABLE_PYTHON "Build Python bindings" OFF)
+option(NSPARSE_OPT_LEVEL "" "generic")
+option(NSPARSE_ENABLE_PYTHON "Build Python bindings" OFF)
 
-add_subdirectory(amaiss)
+add_subdirectory(nsparse)
 
 # Python bindings
-if(AMAISS_ENABLE_PYTHON)
-    add_subdirectory(amaiss/python)
+if(NSPARSE_ENABLE_PYTHON)
+    add_subdirectory(nsparse/python)
 endif()
 
 # CTest must be included in the top level to enable `make test` target.
 include(CTest)
 
 # Unit tests
-option(AMAISS_ENABLE_TESTS "Build unit tests" OFF)
-if(AMAISS_ENABLE_TESTS)
+option(NSPARSE_ENABLE_TESTS "Build unit tests" OFF)
+if(NSPARSE_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
 
 # Benchmarks
-option(AMAISS_ENABLE_BENCHMARKS "Build benchmarks" OFF)
-if(AMAISS_ENABLE_BENCHMARKS)
+option(NSPARSE_ENABLE_BENCHMARKS "Build benchmarks" OFF)
+if(NSPARSE_ENABLE_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()

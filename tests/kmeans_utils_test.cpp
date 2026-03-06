@@ -1,20 +1,20 @@
-#include "amaiss/cluster/kmeans_utils.h"
+#include "nsparse/cluster/kmeans_utils.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
 namespace {
 
 // Helper to create SparseVectors with float values
-amaiss::SparseVectors create_float_vectors(
-    const std::vector<std::vector<amaiss::term_t>>& indices_list,
+nsparse::SparseVectors create_float_vectors(
+    const std::vector<std::vector<nsparse::term_t>>& indices_list,
     const std::vector<std::vector<float>>& values_list) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
     for (size_t i = 0; i < indices_list.size(); ++i) {
         const auto& indices = indices_list[i];
         const auto& values = values_list[i];
@@ -28,19 +28,19 @@ amaiss::SparseVectors create_float_vectors(
 }  // namespace
 
 TEST(MapDocsToClusters, throws_on_null_vectors) {
-    std::vector<amaiss::idx_t> docs = {0, 1};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
-    ASSERT_THROW(amaiss::detail::map_docs_to_clusters(nullptr, docs, clusters),
+    std::vector<nsparse::idx_t> docs = {0, 1};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
+    ASSERT_THROW(nsparse::detail::map_docs_to_clusters(nullptr, docs, clusters),
                  std::runtime_error);
 }
 
 TEST(MapDocsToClusters, empty_docs_no_change) {
     auto vectors =
         create_float_vectors({{0, 1}, {1, 2}}, {{1.0F, 2.0F}, {3.0F, 4.0F}});
-    std::vector<amaiss::idx_t> docs = {};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
+    std::vector<nsparse::idx_t> docs = {};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     ASSERT_EQ(clusters[0].size(), 1);
     ASSERT_EQ(clusters[1].size(), 1);
@@ -48,11 +48,11 @@ TEST(MapDocsToClusters, empty_docs_no_change) {
 
 TEST(MapDocsToClusters, empty_clusters_no_crash) {
     auto vectors = create_float_vectors({{0, 1}}, {{1.0F, 2.0F}});
-    std::vector<amaiss::idx_t> docs = {0};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {};
+    std::vector<nsparse::idx_t> docs = {0};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {};
 
     // Should not crash with empty clusters
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
     ASSERT_TRUE(clusters.empty());
 }
 
@@ -61,10 +61,10 @@ TEST(MapDocsToClusters, single_cluster_all_docs_assigned) {
     auto vectors = create_float_vectors(
         {{0, 1}, {0, 1}, {0, 1}}, {{1.0F, 0.0F}, {0.8F, 0.2F}, {0.9F, 0.1F}});
 
-    std::vector<amaiss::idx_t> docs = {1, 2};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}};  // centroid is 0
+    std::vector<nsparse::idx_t> docs = {1, 2};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}};  // centroid is 0
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     ASSERT_EQ(clusters[0].size(), 3);  // centroid + 2 docs
     ASSERT_EQ(clusters[0][0], 0);      // centroid unchanged
@@ -84,10 +84,10 @@ TEST(MapDocsToClusters, two_clusters_docs_assigned_to_nearest) {
     auto vectors = create_float_vectors({{0}, {1}, {0}, {1}},
                                         {{1.0F}, {1.0F}, {0.9F}, {0.8F}});
 
-    std::vector<amaiss::idx_t> docs = {2, 3};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
+    std::vector<nsparse::idx_t> docs = {2, 3};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     // Doc 2 (term 0) has similarity with centroid 0 (term 0), 0 with centroid 1
     // Doc 3 (term 1) has similarity with centroid 1 (term 1), 0 with centroid 0
@@ -105,10 +105,10 @@ TEST(MapDocsToClusters, doc_assigned_to_highest_similarity_cluster) {
         create_float_vectors({{0, 1}, {2, 3}, {0, 1, 2}},
                              {{1.0F, 1.0F}, {1.0F, 1.0F}, {0.5F, 0.5F, 0.1F}});
 
-    std::vector<amaiss::idx_t> docs = {2};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
+    std::vector<nsparse::idx_t> docs = {2};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     // Doc 2 has dot product 1.0 with centroid 0, 0.1 with centroid 1
     ASSERT_EQ(clusters[0].size(), 2);  // centroid + doc 2
@@ -120,10 +120,10 @@ TEST(MapDocsToClusters, centroid_position_preserved) {
     auto vectors =
         create_float_vectors({{0}, {1}, {0}}, {{1.0F}, {1.0F}, {0.5F}});
 
-    std::vector<amaiss::idx_t> docs = {2};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
+    std::vector<nsparse::idx_t> docs = {2};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     // Centroids should remain at position 0
     ASSERT_EQ(clusters[0][0], 0);
@@ -143,13 +143,13 @@ TEST(MapDocsToClusters,
 
     // Include centroids (0, 1) in the docs list - this tests the duplicate
     // avoidance logic
-    std::vector<amaiss::idx_t> docs = {0, 1, 2, 3, 4};
-    std::vector<std::vector<amaiss::idx_t>> clusters = {{0}, {1}};
+    std::vector<nsparse::idx_t> docs = {0, 1, 2, 3, 4};
+    std::vector<std::vector<nsparse::idx_t>> clusters = {{0}, {1}};
 
-    amaiss::detail::map_docs_to_clusters(&vectors, docs, clusters);
+    nsparse::detail::map_docs_to_clusters(&vectors, docs, clusters);
 
     // Collect all docs from all clusters
-    std::vector<amaiss::idx_t> all_docs_in_clusters;
+    std::vector<nsparse::idx_t> all_docs_in_clusters;
     for (const auto& cluster : clusters) {
         for (const auto& doc : cluster) {
             all_docs_in_clusters.push_back(doc);
@@ -166,7 +166,7 @@ TEST(MapDocsToClusters,
     }
 
     // Verify no missing docs: all input docs should be present
-    std::vector<amaiss::idx_t> expected_docs = {0, 1, 2, 3, 4};
+    std::vector<nsparse::idx_t> expected_docs = {0, 1, 2, 3, 4};
     ASSERT_EQ(all_docs_in_clusters.size(), expected_docs.size());
     ASSERT_EQ(all_docs_in_clusters, expected_docs);
 }

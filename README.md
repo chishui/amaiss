@@ -17,7 +17,7 @@ sudo apt install -y g++ cmake libomp-dev python3.12-dev python3-pip swig libabsl
 
 ```bash
 git clone <repository-url>
-cd amaiss
+cd nsparse
 ```
 
 ### Build
@@ -36,7 +36,7 @@ This will:
 First, build with tests enabled:
 
 ```bash
-cmake -S . -B build -DAMAISS_ENABLE_TESTS=ON
+cmake -S . -B build -DNSPARSE_ENABLE_TESTS=ON
 cmake --build build
 ```
 
@@ -49,8 +49,8 @@ make test
 To run specific test suites:
 
 ```bash
-./build/tests/amaiss_test --gtest_filter="SparseVectors*"
-./build/tests/amaiss_test --gtest_filter="IndexFactory*"
+./build/tests/nsparse_test --gtest_filter="SparseVectors*"
+./build/tests/nsparse_test --gtest_filter="IndexFactory*"
 ```
 
 ### Python Environment Setup
@@ -70,7 +70,7 @@ source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
 
 # Install the package
-cd amaiss/python
+cd nsparse/python
 pip install -e .
 ```
 
@@ -78,13 +78,13 @@ pip install -e .
 
 ```bash
 # Create a new conda environment
-conda create -n amaiss python=3.12
+conda create -n nsparse python=3.12
 
 # Activate the environment
-conda activate amaiss
+conda activate nsparse
 
 # Install the package
-cd amaiss/python
+cd nsparse/python
 pip install -e .
 ```
 
@@ -93,7 +93,7 @@ pip install -e .
 After setting up your environment and building, you can use the Python bindings:
 
 ```bash
-python demos/amaiss_example.py
+python demos/nsparse_example.py
 ```
 
 ### Clean Build

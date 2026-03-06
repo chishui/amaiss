@@ -1,7 +1,7 @@
-# Copyright (c) amaiss authors
-# Unit tests for amaiss library
+# Copyright (c) nsparse authors
+# Unit tests for nsparse library
 
-set(AMAISS_TEST_SRC
+set(NSPARSE_TEST_SRC
     distance_test.cpp
     exact_matcher_test.cpp
     id_map_index_test.cpp
@@ -37,16 +37,16 @@ FetchContent_MakeAvailable(googletest)
 
 find_package(OpenMP REQUIRED)
 
-add_executable(amaiss_test ${AMAISS_TEST_SRC})
+add_executable(nsparse_test ${NSPARSE_TEST_SRC})
 
-target_include_directories(amaiss_test PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(nsparse_test PRIVATE ${PROJECT_SOURCE_DIR})
 
-target_link_libraries(amaiss_test PRIVATE
-    amaiss
+target_link_libraries(nsparse_test PRIVATE
+    nsparse
     OpenMP::OpenMP_CXX
     GTest::gtest_main
     absl::flat_hash_set
 )
 
 include(GoogleTest)
-gtest_discover_tests(amaiss_test)
+gtest_discover_tests(nsparse_test)

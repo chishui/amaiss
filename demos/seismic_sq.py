@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Example usage of the AMAISS Python bindings with SeismicScalarQuantizedIndex.
+Example usage of the NSPARSE Python bindings with SeismicScalarQuantizedIndex.
 """
 
 import numpy as np
-import amaiss
+import nsparse
 
 
 def main():
@@ -49,7 +49,7 @@ def main():
     #   lambda=10: posting list length
     #   beta=2: number of clusters in a posting list
     #   alpha=0.4: summary vector prune alpha mass ratio
-    index = amaiss.index_factory(
+    index = nsparse.index_factory(
         dim,
         "seismic_sq,quantizer=8bit|vmin=0.0|vmax=3.0|lambda=10|beta=2|alpha=0.4",
     )
@@ -71,7 +71,7 @@ def main():
     k = 3  # Find top 3 nearest neighbors
 
     # Create search parameters
-    params = amaiss.SeismicSearchParameters(k, 1.2)
+    params = nsparse.SeismicSearchParameters(k, 1.2)
 
     # Perform search
     labels = index.search(

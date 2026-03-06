@@ -1,4 +1,4 @@
-#include "amaiss/utils/scalar_quantizer.h"
+#include "nsparse/utils/scalar_quantizer.h"
 
 #include <gtest/gtest.h>
 
@@ -6,8 +6,8 @@
 #include <limits>
 #include <vector>
 
-using amaiss::QuantizerType;
-using amaiss::ScalarQuantizer;
+using nsparse::QuantizerType;
+using nsparse::ScalarQuantizer;
 
 // Constructor tests
 TEST(ScalarQuantizer, default_constructor) {

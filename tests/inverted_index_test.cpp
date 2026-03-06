@@ -1,16 +1,16 @@
-#include "amaiss/inverted_index.h"
+#include "nsparse/inverted_index.h"
 
 #include <gtest/gtest.h>
 
 #include <map>
 #include <vector>
 
-#include "amaiss/index.h"
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/io/index_io.h"
-#include "amaiss/types.h"
+#include "nsparse/index.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/io/index_io.h"
+#include "nsparse/types.h"
 
-namespace amaiss {
+namespace nsparse {
 namespace {
 
 // Helper to add docs from map format: {{term: value, ...}, ...}
@@ -403,4 +403,4 @@ TEST(InvertedIndexIO, roundtrip_preserves_fourcc) {
 }
 
 }  // namespace
-}  // namespace amaiss
+}  // namespace nsparse

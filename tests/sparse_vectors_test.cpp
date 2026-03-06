@@ -1,38 +1,38 @@
-#include "amaiss/sparse_vectors.h"
+#include "nsparse/sparse_vectors.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <vector>
 
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/types.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/types.h"
 
 // Constructor tests
 TEST(SparseVectors, default_constructor) {
-    amaiss::SparseVectors vectors;
+    nsparse::SparseVectors vectors;
     ASSERT_EQ(vectors.num_vectors(), 0);
 }
 
 TEST(SparseVectors, config_constructor) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
     ASSERT_EQ(vectors.num_vectors(), 0);
     ASSERT_EQ(vectors.get_dimension(), 10);
-    ASSERT_EQ(vectors.get_element_size(), amaiss::U32);
+    ASSERT_EQ(vectors.get_element_size(), nsparse::U32);
 }
 
 TEST(SparseVectors, config_constructor_throws_on_zero_dimension) {
     ASSERT_THROW(
-        amaiss::SparseVectors({.element_size = amaiss::U32, .dimension = 0}),
+        nsparse::SparseVectors({.element_size = nsparse::U32, .dimension = 0}),
         std::invalid_argument);
 }
 
 // add_vector tests (single vector)
 TEST(SparseVectors, add_vector_single_float) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 2, 4};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 2, 4};
     std::vector<float> values = {1.0F, 2.0F, 3.0F};
 
     vectors.add_vector(indices.data(), indices.size(),
@@ -43,8 +43,9 @@ TEST(SparseVectors, add_vector_single_float) {
 }
 
 TEST(SparseVectors, add_vector_single_uint8) {
-    amaiss::SparseVectors vectors({.element_size = amaiss::U8, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {1, 3};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {1, 3};
     std::vector<uint8_t> values = {100, 200};
 
     vectors.add_vector(indices, values);
@@ -53,16 +54,16 @@ TEST(SparseVectors, add_vector_single_uint8) {
 }
 
 TEST(SparseVectors, add_vector_multiple) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
 
-    std::vector<amaiss::term_t> indices1 = {0, 1};
+    std::vector<nsparse::term_t> indices1 = {0, 1};
     std::vector<float> values1 = {1.0F, 2.0F};
     vectors.add_vector(indices1.data(), indices1.size(),
                        reinterpret_cast<const uint8_t*>(values1.data()),
                        values1.size() * sizeof(float));
 
-    std::vector<amaiss::term_t> indices2 = {2, 3, 4};
+    std::vector<nsparse::term_t> indices2 = {2, 3, 4};
     std::vector<float> values2 = {3.0F, 4.0F, 5.0F};
     vectors.add_vector(indices2.data(), indices2.size(),
                        reinterpret_cast<const uint8_t*>(values2.data()),
@@ -73,12 +74,12 @@ TEST(SparseVectors, add_vector_multiple) {
 
 // add_vectors tests (batch)
 TEST(SparseVectors, add_vectors_batch_float) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
 
     // Two vectors: [0,1] and [2,3,4]
-    std::vector<amaiss::idx_t> indptr = {0, 2, 5};
-    std::vector<amaiss::term_t> indices = {0, 1, 2, 3, 4};
+    std::vector<nsparse::idx_t> indptr = {0, 2, 5};
+    std::vector<nsparse::term_t> indices = {0, 1, 2, 3, 4};
     std::vector<float> values = {1.0F, 2.0F, 3.0F, 4.0F, 5.0F};
 
     vectors.add_vectors(indptr.data(), indptr.size(), indices.data(),
@@ -90,11 +91,11 @@ TEST(SparseVectors, add_vectors_batch_float) {
 }
 
 TEST(SparseVectors, add_vectors_batch_uint8) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U8, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = 10});
 
-    std::vector<amaiss::idx_t> indptr = {0, 2, 4};
-    std::vector<amaiss::term_t> indices = {0, 1, 2, 3};
+    std::vector<nsparse::idx_t> indptr = {0, 2, 4};
+    std::vector<nsparse::term_t> indices = {0, 1, 2, 3};
     std::vector<uint8_t> values = {10, 20, 30, 40};
 
     vectors.add_vectors(indptr, indices, values);
@@ -103,11 +104,11 @@ TEST(SparseVectors, add_vectors_batch_uint8) {
 }
 
 TEST(SparseVectors, add_vectors_empty_indptr) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
 
-    std::vector<amaiss::idx_t> indptr = {0};  // Less than 2 elements
-    std::vector<amaiss::term_t> indices = {};
+    std::vector<nsparse::idx_t> indptr = {0};  // Less than 2 elements
+    std::vector<nsparse::term_t> indices = {};
     std::vector<uint8_t> values = {};
 
     vectors.add_vectors(indptr, indices, values);
@@ -116,11 +117,11 @@ TEST(SparseVectors, add_vectors_empty_indptr) {
 }
 
 TEST(SparseVectors, add_vectors_throws_on_size_mismatch) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 10});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 10});
 
-    std::vector<amaiss::idx_t> indptr = {0, 2};
-    std::vector<amaiss::term_t> indices = {0, 1};
+    std::vector<nsparse::idx_t> indptr = {0, 2};
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<uint8_t> values = {1, 2};  // Should be 8 bytes for 2 floats
 
     ASSERT_THROW(vectors.add_vectors(indptr, indices, values),
@@ -129,9 +130,9 @@ TEST(SparseVectors, add_vectors_throws_on_size_mismatch) {
 
 // get_dense_vector_float tests
 TEST(SparseVectors, get_dense_vector_float_single) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 2, 4};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 2, 4};
     std::vector<float> values = {1.0F, 2.0F, 3.0F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -148,8 +149,9 @@ TEST(SparseVectors, get_dense_vector_float_single) {
 }
 
 TEST(SparseVectors, get_dense_vector_float_uint8_element) {
-    amaiss::SparseVectors vectors({.element_size = amaiss::U8, .dimension = 3});
-    std::vector<amaiss::term_t> indices = {0, 2};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = 3});
+    std::vector<nsparse::term_t> indices = {0, 2};
     std::vector<uint8_t> values = {100, 200};
     vectors.add_vector(indices, values);
 
@@ -162,9 +164,9 @@ TEST(SparseVectors, get_dense_vector_float_uint8_element) {
 }
 
 TEST(SparseVectors, get_dense_vector_float_uint16_element) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U16, .dimension = 3});
-    std::vector<amaiss::term_t> indices = {0, 2};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U16, .dimension = 3});
+    std::vector<nsparse::term_t> indices = {0, 2};
     std::vector<uint16_t> values = {1000, 2000};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -179,16 +181,16 @@ TEST(SparseVectors, get_dense_vector_float_uint16_element) {
 }
 
 TEST(SparseVectors, get_dense_vector_float_multiple_vectors) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 3});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 3});
 
-    std::vector<amaiss::term_t> indices1 = {0};
+    std::vector<nsparse::term_t> indices1 = {0};
     std::vector<float> values1 = {1.0F};
     vectors.add_vector(indices1.data(), indices1.size(),
                        reinterpret_cast<const uint8_t*>(values1.data()),
                        values1.size() * sizeof(float));
 
-    std::vector<amaiss::term_t> indices2 = {1, 2};
+    std::vector<nsparse::term_t> indices2 = {1, 2};
     std::vector<float> values2 = {2.0F, 3.0F};
     vectors.add_vector(indices2.data(), indices2.size(),
                        reinterpret_cast<const uint8_t*>(values2.data()),
@@ -206,9 +208,9 @@ TEST(SparseVectors, get_dense_vector_float_multiple_vectors) {
 }
 
 TEST(SparseVectors, get_dense_vector_float_out_of_range) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0};
     std::vector<float> values = {1.0F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -220,8 +222,9 @@ TEST(SparseVectors, get_dense_vector_float_out_of_range) {
 
 // get_dense_vector tests (raw bytes)
 TEST(SparseVectors, get_dense_vector_uint8) {
-    amaiss::SparseVectors vectors({.element_size = amaiss::U8, .dimension = 4});
-    std::vector<amaiss::term_t> indices = {1, 3};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = 4});
+    std::vector<nsparse::term_t> indices = {1, 3};
     std::vector<uint8_t> values = {50, 150};
     vectors.add_vector(indices, values);
 
@@ -235,9 +238,9 @@ TEST(SparseVectors, get_dense_vector_uint8) {
 }
 
 TEST(SparseVectors, get_dense_vector_uint16) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U16, .dimension = 3});
-    std::vector<amaiss::term_t> indices = {0, 2};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U16, .dimension = 3});
+    std::vector<nsparse::term_t> indices = {0, 2};
     std::vector<uint16_t> values = {1000, 2000};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -253,8 +256,9 @@ TEST(SparseVectors, get_dense_vector_uint16) {
 }
 
 TEST(SparseVectors, get_dense_vector_out_of_range) {
-    amaiss::SparseVectors vectors({.element_size = amaiss::U8, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0};
     std::vector<uint8_t> values = {1};
     vectors.add_vector(indices, values);
 
@@ -263,37 +267,37 @@ TEST(SparseVectors, get_dense_vector_out_of_range) {
 
 // Data accessor tests
 TEST(SparseVectors, indptr_data) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<float> values = {1.0F, 2.0F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
                        values.size() * sizeof(float));
 
-    const amaiss::idx_t* indptr = vectors.indptr_data();
+    const nsparse::idx_t* indptr = vectors.indptr_data();
     ASSERT_EQ(indptr[0], 0);
     ASSERT_EQ(indptr[1], 2);
 }
 
 TEST(SparseVectors, indices_data) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {2, 4};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {2, 4};
     std::vector<float> values = {1.0F, 2.0F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
                        values.size() * sizeof(float));
 
-    const amaiss::term_t* idx = vectors.indices_data();
+    const nsparse::term_t* idx = vectors.indices_data();
     ASSERT_EQ(idx[0], 2);
     ASSERT_EQ(idx[1], 4);
 }
 
 TEST(SparseVectors, values_data_float) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<float> values = {1.5F, 2.5F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -305,9 +309,9 @@ TEST(SparseVectors, values_data_float) {
 }
 
 TEST(SparseVectors, typed_values_data) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U16, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U16, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<uint16_t> values = {1000, 2000};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -319,9 +323,9 @@ TEST(SparseVectors, typed_values_data) {
 }
 
 TEST(SparseVectors, get_all_data) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<float> values = {1.0F, 2.0F};
     vectors.add_vector(indices.data(), indices.size(),
                        reinterpret_cast<const uint8_t*>(values.data()),
@@ -338,37 +342,37 @@ TEST(SparseVectors, get_all_data) {
 
 // Serialization tests
 TEST(SparseVectors, serialize_deserialize_empty) {
-    amaiss::SparseVectors original;
+    nsparse::SparseVectors original;
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::SparseVectors loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::SparseVectors loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.num_vectors(), 0);
 }
 
 TEST(SparseVectors, serialize_deserialize_float) {
-    amaiss::SparseVectors original(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 2, 4};
+    nsparse::SparseVectors original(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 2, 4};
     std::vector<float> values = {1.0F, 2.0F, 3.0F};
     original.add_vector(indices.data(), indices.size(),
                         reinterpret_cast<const uint8_t*>(values.data()),
                         values.size() * sizeof(float));
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::SparseVectors loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::SparseVectors loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.num_vectors(), 1);
     ASSERT_EQ(loaded.get_dimension(), 5);
-    ASSERT_EQ(loaded.get_element_size(), amaiss::U32);
+    ASSERT_EQ(loaded.get_element_size(), nsparse::U32);
 
     auto dense = loaded.get_dense_vector_float(0);
     ASSERT_FLOAT_EQ(dense[0], 1.0F);
@@ -377,22 +381,22 @@ TEST(SparseVectors, serialize_deserialize_float) {
 }
 
 TEST(SparseVectors, serialize_deserialize_multiple_vectors) {
-    amaiss::SparseVectors original(
-        {.element_size = amaiss::U8, .dimension = 4});
+    nsparse::SparseVectors original(
+        {.element_size = nsparse::U8, .dimension = 4});
 
-    std::vector<amaiss::term_t> indices1 = {0, 1};
+    std::vector<nsparse::term_t> indices1 = {0, 1};
     std::vector<uint8_t> values1 = {10, 20};
     original.add_vector(indices1, values1);
 
-    std::vector<amaiss::term_t> indices2 = {2, 3};
+    std::vector<nsparse::term_t> indices2 = {2, 3};
     std::vector<uint8_t> values2 = {30, 40};
     original.add_vector(indices2, values2);
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::SparseVectors loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::SparseVectors loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.num_vectors(), 2);
@@ -408,15 +412,15 @@ TEST(SparseVectors, serialize_deserialize_multiple_vectors) {
 
 // Copy/move tests
 TEST(SparseVectors, copy_constructor) {
-    amaiss::SparseVectors original(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors original(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<float> values = {1.0F, 2.0F};
     original.add_vector(indices.data(), indices.size(),
                         reinterpret_cast<const uint8_t*>(values.data()),
                         values.size() * sizeof(float));
 
-    amaiss::SparseVectors copy(original);
+    nsparse::SparseVectors copy(original);
 
     ASSERT_EQ(copy.num_vectors(), 1);
     auto dense = copy.get_dense_vector_float(0);
@@ -425,15 +429,15 @@ TEST(SparseVectors, copy_constructor) {
 }
 
 TEST(SparseVectors, move_constructor) {
-    amaiss::SparseVectors original(
-        {.element_size = amaiss::U32, .dimension = 5});
-    std::vector<amaiss::term_t> indices = {0, 1};
+    nsparse::SparseVectors original(
+        {.element_size = nsparse::U32, .dimension = 5});
+    std::vector<nsparse::term_t> indices = {0, 1};
     std::vector<float> values = {1.0F, 2.0F};
     original.add_vector(indices.data(), indices.size(),
                         reinterpret_cast<const uint8_t*>(values.data()),
                         values.size() * sizeof(float));
 
-    amaiss::SparseVectors moved(std::move(original));
+    nsparse::SparseVectors moved(std::move(original));
 
     ASSERT_EQ(moved.num_vectors(), 1);
     auto dense = moved.get_dense_vector_float(0);

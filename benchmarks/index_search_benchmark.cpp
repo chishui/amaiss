@@ -8,11 +8,11 @@
 #include <string>
 #include <vector>
 
-#include "amaiss/index.h"
-#include "amaiss/index_factory.h"
-#include "amaiss/io/index_io.h"
-#include "amaiss/seismic_index.h"
-#include "amaiss/types.h"
+#include "nsparse/index.h"
+#include "nsparse/index_factory.h"
+#include "nsparse/io/index_io.h"
+#include "nsparse/seismic_index.h"
+#include "nsparse/types.h"
 
 namespace {
 
@@ -20,8 +20,8 @@ struct CSRMatrix {
     int64_t nrow;
     int64_t ncol;
     int64_t nnz;
-    std::vector<amaiss::idx_t> indptr;
-    std::vector<amaiss::term_t> indices;
+    std::vector<nsparse::idx_t> indptr;
+    std::vector<nsparse::term_t> indices;
     std::vector<float> data;
 };
 
@@ -43,7 +43,7 @@ CSRMatrix read_csr(const std::string& path) {
            static_cast<std::streamsize>((m.nrow + 1) * sizeof(int64_t)));
     m.indptr.resize(m.nrow + 1);
     for (int64_t i = 0; i <= m.nrow; ++i) {
-        m.indptr[i] = static_cast<amaiss::idx_t>(indptr64[i]);
+        m.indptr[i] = static_cast<nsparse::idx_t>(indptr64[i]);
     }
 
     std::vector<int32_t> indices32(m.nnz);
@@ -51,7 +51,7 @@ CSRMatrix read_csr(const std::string& path) {
            static_cast<std::streamsize>(m.nnz * sizeof(int32_t)));
     m.indices.resize(m.nnz);
     for (int64_t i = 0; i < m.nnz; ++i) {
-        m.indices[i] = static_cast<amaiss::term_t>(indices32[i]);
+        m.indices[i] = static_cast<nsparse::term_t>(indices32[i]);
     }
 
     m.data.resize(m.nnz);
@@ -74,7 +74,7 @@ std::string get_env_or_die(const char* name) {
 /// dat_suffix) combination. The dat_suffix is used for caching the built index
 /// to disk; pass an empty string to skip caching (e.g. for the inverted index).
 struct IndexFixture {
-    amaiss::Index* index{nullptr};
+    nsparse::Index* index{nullptr};
     CSRMatrix query;
 
     static IndexFixture& get(const std::string& descriptor,
@@ -94,8 +94,8 @@ struct IndexFixture {
     }
 
     IndexFixture(const std::string& descriptor, const std::string& dat_suffix) {
-        std::string data_path = get_env_or_die("AMAISS_DATA_CSR");
-        std::string query_path = get_env_or_die("AMAISS_QUERY_CSR");
+        std::string data_path = get_env_or_die("NSPARSE_DATA_CSR");
+        std::string query_path = get_env_or_die("NSPARSE_QUERY_CSR");
 
         std::cout << "Loading query CSR: " << query_path << "\n";
         query = read_csr(query_path);
@@ -109,7 +109,8 @@ struct IndexFixture {
             if (dat_check.good()) {
                 dat_check.close();
                 std::cout << "Found pre-built index: " << dat_path << "\n";
-                index = amaiss::read_index(const_cast<char*>(dat_path.c_str()));
+                index =
+                    nsparse::read_index(const_cast<char*>(dat_path.c_str()));
                 std::cout << "Index ready. num_vectors=" << index->num_vectors()
                           << "\n";
                 return;
@@ -121,11 +122,11 @@ struct IndexFixture {
         std::cout << "  rows=" << data.nrow << " cols=" << data.ncol
                   << " nnz=" << data.nnz << "\n";
 
-        index = amaiss::index_factory(static_cast<int>(data.ncol),
-                                      descriptor.c_str());
+        index = nsparse::index_factory(static_cast<int>(data.ncol),
+                                       descriptor.c_str());
 
         std::cout << "Adding vectors...\n";
-        index->add(static_cast<amaiss::idx_t>(data.nrow), data.indptr.data(),
+        index->add(static_cast<nsparse::idx_t>(data.nrow), data.indptr.data(),
                    data.indices.data(), data.data.data());
 
         std::cout << "Building index...\n";
@@ -134,7 +135,7 @@ struct IndexFixture {
         if (!dat_suffix.empty()) {
             std::string dat_path = data_path + dat_suffix;
             std::cout << "Saving index to: " << dat_path << "\n";
-            amaiss::write_index(index, const_cast<char*>(dat_path.c_str()));
+            nsparse::write_index(index, const_cast<char*>(dat_path.c_str()));
         }
 
         std::cout << "Index ready. num_vectors=" << index->num_vectors()
@@ -153,10 +154,10 @@ static void BM_InvertedIndex_Search(benchmark::State& state) {
     const int n_queries = static_cast<int>(fix.query.nrow);
 
     std::vector<float> distances(static_cast<size_t>(n_queries * k));
-    std::vector<amaiss::idx_t> labels(static_cast<size_t>(n_queries * k));
+    std::vector<nsparse::idx_t> labels(static_cast<size_t>(n_queries * k));
 
     for (auto _ : state) {
-        fix.index->search(static_cast<amaiss::idx_t>(n_queries),
+        fix.index->search(static_cast<nsparse::idx_t>(n_queries),
                           fix.query.indptr.data(), fix.query.indices.data(),
                           fix.query.data.data(), k, distances.data(),
                           labels.data(), nullptr);
@@ -190,13 +191,13 @@ static void BM_Seismic_Search(benchmark::State& state) {
     const int k = static_cast<int>(state.range(0));
     const int n_queries = static_cast<int>(fix.query.nrow);
 
-    amaiss::SeismicSearchParameters params(/*cut=*/3, /*heap_factor=*/1.0F);
+    nsparse::SeismicSearchParameters params(/*cut=*/3, /*heap_factor=*/1.0F);
 
     std::vector<float> distances(static_cast<size_t>(n_queries * k));
-    std::vector<amaiss::idx_t> labels(static_cast<size_t>(n_queries * k));
+    std::vector<nsparse::idx_t> labels(static_cast<size_t>(n_queries * k));
 
     for (auto _ : state) {
-        fix.index->search(static_cast<amaiss::idx_t>(n_queries),
+        fix.index->search(static_cast<nsparse::idx_t>(n_queries),
                           fix.query.indptr.data(), fix.query.indices.data(),
                           fix.query.data.data(), k, distances.data(),
                           labels.data(), &params);
@@ -232,13 +233,13 @@ static void BM_SeismicSQ_Search(benchmark::State& state) {
     const int k = static_cast<int>(state.range(0));
     const int n_queries = static_cast<int>(fix.query.nrow);
 
-    amaiss::SeismicSearchParameters params(/*cut=*/3, /*heap_factor=*/1.0F);
+    nsparse::SeismicSearchParameters params(/*cut=*/3, /*heap_factor=*/1.0F);
 
     std::vector<float> distances(static_cast<size_t>(n_queries * k));
-    std::vector<amaiss::idx_t> labels(static_cast<size_t>(n_queries * k));
+    std::vector<nsparse::idx_t> labels(static_cast<size_t>(n_queries * k));
 
     for (auto _ : state) {
-        fix.index->search(static_cast<amaiss::idx_t>(n_queries),
+        fix.index->search(static_cast<nsparse::idx_t>(n_queries),
                           fix.query.indptr.data(), fix.query.indices.data(),
                           fix.query.data.data(), k, distances.data(),
                           labels.data(), &params);

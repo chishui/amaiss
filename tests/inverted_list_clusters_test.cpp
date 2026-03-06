@@ -1,20 +1,20 @@
-#include "amaiss/cluster/inverted_list_clusters.h"
+#include "nsparse/cluster/inverted_list_clusters.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "amaiss/io/buffered_io.h"
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
+#include "nsparse/io/buffered_io.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
 namespace {
 
-amaiss::SparseVectors create_float_vectors(
-    const std::vector<std::vector<amaiss::term_t>>& indices_list,
+nsparse::SparseVectors create_float_vectors(
+    const std::vector<std::vector<nsparse::term_t>>& indices_list,
     const std::vector<std::vector<float>>& values_list, size_t dimension = 10) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U32, .dimension = dimension});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U32, .dimension = dimension});
     for (size_t i = 0; i < indices_list.size(); ++i) {
         const auto& indices = indices_list[i];
         const auto& values = values_list[i];
@@ -25,12 +25,12 @@ amaiss::SparseVectors create_float_vectors(
     return vectors;
 }
 
-amaiss::SparseVectors create_uint8_vectors(
-    const std::vector<std::vector<amaiss::term_t>>& indices_list,
+nsparse::SparseVectors create_uint8_vectors(
+    const std::vector<std::vector<nsparse::term_t>>& indices_list,
     const std::vector<std::vector<uint8_t>>& values_list,
     size_t dimension = 10) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U8, .dimension = dimension});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U8, .dimension = dimension});
     for (size_t i = 0; i < indices_list.size(); ++i) {
         const auto& indices = indices_list[i];
         const auto& values = values_list[i];
@@ -40,12 +40,12 @@ amaiss::SparseVectors create_uint8_vectors(
     return vectors;
 }
 
-amaiss::SparseVectors create_uint16_vectors(
-    const std::vector<std::vector<amaiss::term_t>>& indices_list,
+nsparse::SparseVectors create_uint16_vectors(
+    const std::vector<std::vector<nsparse::term_t>>& indices_list,
     const std::vector<std::vector<uint16_t>>& values_list,
     size_t dimension = 10) {
-    amaiss::SparseVectors vectors(
-        {.element_size = amaiss::U16, .dimension = dimension});
+    nsparse::SparseVectors vectors(
+        {.element_size = nsparse::U16, .dimension = dimension});
     for (size_t i = 0; i < indices_list.size(); ++i) {
         const auto& indices = indices_list[i];
         const auto& values = values_list[i];
@@ -60,19 +60,19 @@ amaiss::SparseVectors create_uint16_vectors(
 
 // Constructor tests
 TEST(InvertedListClusters, default_constructor) {
-    amaiss::InvertedListClusters clusters;
+    nsparse::InvertedListClusters clusters;
     ASSERT_EQ(clusters.cluster_size(), 0);
 }
 
 TEST(InvertedListClusters, constructor_with_empty_docs) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {};
+    nsparse::InvertedListClusters clusters(docs);
     ASSERT_EQ(clusters.cluster_size(), 0);
 }
 
 TEST(InvertedListClusters, constructor_with_single_cluster) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1, 2}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1, 2}};
+    nsparse::InvertedListClusters clusters(docs);
 
     auto doc_span = clusters.get_docs(0);
     ASSERT_EQ(doc_span.size(), 3);
@@ -82,8 +82,8 @@ TEST(InvertedListClusters, constructor_with_single_cluster) {
 }
 
 TEST(InvertedListClusters, constructor_with_multiple_clusters) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2, 3, 4}, {5}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2, 3, 4}, {5}};
+    nsparse::InvertedListClusters clusters(docs);
 
     auto doc_span0 = clusters.get_docs(0);
     ASSERT_EQ(doc_span0.size(), 2);
@@ -102,8 +102,8 @@ TEST(InvertedListClusters, constructor_with_multiple_clusters) {
 }
 
 TEST(InvertedListClusters, constructor_with_empty_cluster) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {}, {2}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {}, {2}};
+    nsparse::InvertedListClusters clusters(docs);
 
     auto doc_span0 = clusters.get_docs(0);
     ASSERT_EQ(doc_span0.size(), 2);
@@ -117,10 +117,10 @@ TEST(InvertedListClusters, constructor_with_empty_cluster) {
 
 // Copy constructor tests
 TEST(InvertedListClusters, copy_constructor_without_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2, 3}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2, 3}};
+    nsparse::InvertedListClusters original(docs);
 
-    amaiss::InvertedListClusters copy(original);
+    nsparse::InvertedListClusters copy(original);
 
     auto doc_span = copy.get_docs(0);
     ASSERT_EQ(doc_span.size(), 2);
@@ -129,14 +129,14 @@ TEST(InvertedListClusters, copy_constructor_without_summaries) {
 }
 
 TEST(InvertedListClusters, copy_constructor_with_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2}};
+    nsparse::InvertedListClusters original(docs);
 
     auto vectors = create_float_vectors(
         {{0, 1}, {0, 2}, {1, 2}}, {{1.0F, 2.0F}, {1.5F, 1.0F}, {3.0F, 2.0F}});
     original.summarize(&vectors, 1.0F);
 
-    amaiss::InvertedListClusters copy(original);
+    nsparse::InvertedListClusters copy(original);
 
     ASSERT_EQ(copy.cluster_size(), 2);
     ASSERT_EQ(copy.summaries().num_vectors(), 2);
@@ -144,10 +144,10 @@ TEST(InvertedListClusters, copy_constructor_with_summaries) {
 
 // Copy assignment tests
 TEST(InvertedListClusters, copy_assignment_without_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2, 3}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2, 3}};
+    nsparse::InvertedListClusters original(docs);
 
-    amaiss::InvertedListClusters copy;
+    nsparse::InvertedListClusters copy;
     copy = original;
 
     auto doc_span = copy.get_docs(1);
@@ -157,8 +157,8 @@ TEST(InvertedListClusters, copy_assignment_without_summaries) {
 }
 
 TEST(InvertedListClusters, copy_assignment_self) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}};
+    nsparse::InvertedListClusters clusters(docs);
 
     clusters = clusters;
 
@@ -168,8 +168,8 @@ TEST(InvertedListClusters, copy_assignment_self) {
 
 // Summarize tests
 TEST(InvertedListClusters, summarize_float_single_cluster) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}};
+    nsparse::InvertedListClusters clusters(docs);
 
     // Vector 0: term 0 -> 1.0, term 1 -> 2.0
     // Vector 1: term 0 -> 3.0, term 1 -> 1.0
@@ -189,8 +189,8 @@ TEST(InvertedListClusters, summarize_float_single_cluster) {
 }
 
 TEST(InvertedListClusters, summarize_float_multiple_clusters) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2}};
+    nsparse::InvertedListClusters clusters(docs);
 
     // Cluster 0: vectors 0,1 -> term 0: max(1.0, 2.0)=2.0
     // Cluster 1: vector 2 -> term 1: 3.0
@@ -209,8 +209,8 @@ TEST(InvertedListClusters, summarize_float_multiple_clusters) {
 }
 
 TEST(InvertedListClusters, summarize_uint8) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}};
+    nsparse::InvertedListClusters clusters(docs);
 
     // Vector 0: term 0 -> 10, term 1 -> 20
     // Vector 1: term 0 -> 30, term 1 -> 10
@@ -227,8 +227,8 @@ TEST(InvertedListClusters, summarize_uint8) {
 }
 
 TEST(InvertedListClusters, summarize_uint16) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}};
+    nsparse::InvertedListClusters clusters(docs);
 
     // Vector 0: term 0 -> 100, term 1 -> 200
     // Vector 1: term 0 -> 300, term 1 -> 100
@@ -247,8 +247,8 @@ TEST(InvertedListClusters, summarize_uint16) {
 }
 
 TEST(InvertedListClusters, summarize_with_alpha_pruning) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0}};
+    nsparse::InvertedListClusters clusters(docs);
 
     // Vector with terms: 0->10.0, 1->5.0, 2->3.0, 3->2.0
     // Total sum = 20.0
@@ -268,43 +268,43 @@ TEST(InvertedListClusters, summarize_with_alpha_pruning) {
 }
 
 TEST(InvertedListClusters, summarize_replaces_existing) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0}};
-    amaiss::InvertedListClusters clusters(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0}};
+    nsparse::InvertedListClusters clusters(docs);
 
     auto vectors1 = create_float_vectors({{0}}, {{1.0F}});
     clusters.summarize(&vectors1, 1.0F);
     ASSERT_EQ(clusters.cluster_size(), 1);
 
     auto vectors2 = create_float_vectors({{0}, {1}}, {{2.0F}, {3.0F}});
-    std::vector<std::vector<amaiss::idx_t>> docs2 = {{0, 1}};
-    amaiss::InvertedListClusters clusters2(docs2);
+    std::vector<std::vector<nsparse::idx_t>> docs2 = {{0, 1}};
+    nsparse::InvertedListClusters clusters2(docs2);
     clusters2.summarize(&vectors2, 1.0F);
     ASSERT_EQ(clusters2.cluster_size(), 1);
 }
 
 // Serialization tests
 TEST(InvertedListClusters, serialize_deserialize_empty) {
-    amaiss::InvertedListClusters original;
+    nsparse::InvertedListClusters original;
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::InvertedListClusters loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::InvertedListClusters loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.cluster_size(), 0);
 }
 
 TEST(InvertedListClusters, serialize_deserialize_without_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1, 2}, {3, 4}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1, 2}, {3, 4}};
+    nsparse::InvertedListClusters original(docs);
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::InvertedListClusters loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::InvertedListClusters loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.cluster_size(), 0);  // No summaries
@@ -322,18 +322,18 @@ TEST(InvertedListClusters, serialize_deserialize_without_summaries) {
 }
 
 TEST(InvertedListClusters, serialize_deserialize_with_summaries) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2}};
+    nsparse::InvertedListClusters original(docs);
 
     auto vectors = create_float_vectors(
         {{0, 1}, {0, 2}, {1, 2}}, {{1.0F, 2.0F}, {1.5F, 1.0F}, {3.0F, 2.0F}});
     original.summarize(&vectors, 1.0F);
 
-    amaiss::BufferedIOWriter writer;
+    nsparse::BufferedIOWriter writer;
     original.serialize(&writer);
 
-    amaiss::BufferedIOReader reader(writer.data());
-    amaiss::InvertedListClusters loaded;
+    nsparse::BufferedIOReader reader(writer.data());
+    nsparse::InvertedListClusters loaded;
     loaded.deserialize(&reader);
 
     ASSERT_EQ(loaded.cluster_size(), 2);
@@ -347,10 +347,10 @@ TEST(InvertedListClusters, serialize_deserialize_with_summaries) {
 
 // Move constructor/assignment tests
 TEST(InvertedListClusters, move_constructor) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2, 3}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2, 3}};
+    nsparse::InvertedListClusters original(docs);
 
-    amaiss::InvertedListClusters moved(std::move(original));
+    nsparse::InvertedListClusters moved(std::move(original));
 
     auto doc_span = moved.get_docs(0);
     ASSERT_EQ(doc_span.size(), 2);
@@ -359,10 +359,10 @@ TEST(InvertedListClusters, move_constructor) {
 }
 
 TEST(InvertedListClusters, move_assignment) {
-    std::vector<std::vector<amaiss::idx_t>> docs = {{0, 1}, {2, 3}};
-    amaiss::InvertedListClusters original(docs);
+    std::vector<std::vector<nsparse::idx_t>> docs = {{0, 1}, {2, 3}};
+    nsparse::InvertedListClusters original(docs);
 
-    amaiss::InvertedListClusters moved;
+    nsparse::InvertedListClusters moved;
     moved = std::move(original);
 
     auto doc_span = moved.get_docs(1);

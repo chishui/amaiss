@@ -1,16 +1,16 @@
-// Copyright (c) amaiss authors
+// Copyright (c) nsparse authors
 
-#include "amaiss/seismic_common.h"
+#include "nsparse/seismic_common.h"
 
 #include <cstring>
 #include <vector>
 
-#include "amaiss/id_selector.h"
-#include "amaiss/sparse_vectors.h"
-#include "amaiss/types.h"
 #include "gtest/gtest.h"
+#include "nsparse/id_selector.h"
+#include "nsparse/sparse_vectors.h"
+#include "nsparse/types.h"
 
-namespace amaiss {
+namespace nsparse {
 namespace detail {
 
 // ---- calculate_summary_scores tests ----
@@ -270,4 +270,4 @@ TEST(ShouldRunExactMatch, array_selector_also_enumerable) {
 }
 
 }  // namespace detail
-}  // namespace amaiss
+}  // namespace nsparse
