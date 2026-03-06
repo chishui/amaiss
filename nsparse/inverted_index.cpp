@@ -240,9 +240,7 @@ auto InvertedIndex::search(idx_t n, const idx_t* indptr, const term_t* indices,
     const auto* query_indices = query_vectors.indices_data();
     const auto* query_values = query_vectors.values_data_float();
 
-    int num_threads = 8;
-    int chunk_size = std::max(1, static_cast<int>(n) / (num_threads * 4));
-#pragma omp parallel for num_threads(num_threads) schedule(dynamic, chunk_size)
+#pragma omp parallel for
     for (idx_t query_idx = 0; query_idx < n; ++query_idx) {
         const idx_t start = query_indptr[query_idx];
         const size_t len = query_indptr[query_idx + 1] - start;
